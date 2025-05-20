@@ -1,0 +1,43 @@
+# Generated with clang-tidy 18.1.8.
+
+# Use clang-format.
+HeaderFileExtensions:
+  - hpp
+ImplementationFileExtensions:
+  - cpp
+FormatStyle: file
+
+CheckOptions:
+  - { key: readability-identifier-naming.ClassCase,              value: lower_case }
+  - { key: readability-identifier-naming.EnumCase,               value: lower_case }
+  - { key: readability-identifier-naming.EnumConstantCase,       value: lower_case }
+  - { key: readability-identifier-naming.FunctionCase,           value: lower_case }
+  - { key: readability-identifier-naming.NamespaceCase,          value: lower_case }
+  - { key: readability-identifier-naming.ParameterCase,          value: lower_case }
+  - { key: readability-identifier-naming.TypeAliasCase,          value: lower_case }
+  - { key: readability-identifier-naming.UnionCase,              value: lower_case }
+  - { key: readability-identifier-naming.VariableCase,           value: lower_case }
+# Ignore public members in structs.
+  - { key: misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic, value: true }
+# String view literals using MSVC
+  - { key: misc-include-cleaner.IgnoreHeaders, value: "__msvc_string_view.hpp" }
+
+WarningsAsErrors: '*'
+
+# All clang-checks are enabled by default, except for some project-specific diagnostics.
+#
+# Checks producing undesirable results or false positives are disabled explicitly documenting the reason below.
+# modernize-use-trailing-return-type: Do not force use of trailing return types.
+
+Checks: '
+*,
+-altera-*,
+-android-*,
+-boost-*,
+-fuchsia-*,
+-google-*,
+-llvmlibc-*,
+-zircon-*,
+
+-modernize-use-trailing-return-type,
+'

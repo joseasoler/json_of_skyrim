@@ -1,0 +1,42 @@
+# Build folders
+build
+cmake-build*
+
+# IDE project folders
+.idea
+.vs
+
+# User provided CMake presets
+CMakeUserPresets.json
+
+# Visual Studio build folders
+out*
+
+# Prerequisites
+*.d
+
+# Compiled object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled headers
+*.gch
+*.pch
+
+# Compiled dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
