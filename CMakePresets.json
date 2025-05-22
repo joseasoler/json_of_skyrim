@@ -1,0 +1,47 @@
+{
+	"version": 6,
+	"cmakeMinimumRequired": {
+		"major": 4,
+		"minor": 0,
+		"patch": 0
+	},
+	"configurePresets": [
+		{
+			"name": "cfg-base",
+			"binaryDir": "build/${presetName}",
+			"hidden": true,
+			"generator": "Ninja",
+			"cacheVariables": {
+				"CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+				"CMAKE_COMPILE_WARNING_AS_ERROR": "ON"
+			}
+		},
+		{
+			"name": "dev-x64-windows-msvc-debug",
+			"condition": {
+				"type": "equals",
+				"lhs": "${hostSystemName}",
+				"rhs": "Windows"
+			},
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Debug",
+				"CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreadedDebug"
+			},
+			"inherits": [
+				"cfg-base"
+			],
+			"displayName": "Dev - x64 Windows MSVC debug"
+		},
+		{
+			"name": "dev-x64-windows-msvc-release",
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release",
+				"CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded"
+			},
+			"inherits": [
+				"cfg-base"
+			],
+			"displayName": "Dev - x64 Windows MSVC release"
+		}
+	]
+}
