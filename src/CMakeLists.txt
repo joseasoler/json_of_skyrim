@@ -1,6 +1,11 @@
 add_executable(josk
-	josk.cpp
-	${PROJECT_SOURCE_DIR}/josk_application.manifest
+		josk.cpp
+		tes_reader.cpp
+		${PROJECT_SOURCE_DIR}/josk_application.manifest
+)
+
+target_include_directories(josk PUBLIC
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>/include
 )
 
 target_compile_definitions(josk PRIVATE ${JOSK_CXX_COMPILE_DEFINITIONS})
@@ -11,5 +16,3 @@ if (JOSK_CLANG_FORMAT_BINARY)
 endif ()
 
 install(TARGETS josk RUNTIME)
-
-
