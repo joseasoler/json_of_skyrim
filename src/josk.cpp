@@ -1,11 +1,10 @@
-#include <josk/tes_format.hpp>
-#include <josk/tes_reader.hpp>
+#include <josk/cli.hpp>
 
-#include <iostream>
-#include <unordered_set>
+#include <CLI/App.hpp>
 
 int main(const int argc, char* argv[])
 {
+	/*
 	if (argc == 2)
 	{
 		// ToDo hardcoded for now.
@@ -21,5 +20,11 @@ int main(const int argc, char* argv[])
 			std::cerr << result.error() << '\n';
 		}
 	}
+	*/
+	CLI::App app{};
+	josk::cli::args arguments{};
+	josk::cli::configure_cli(app, arguments);
+	CLI11_PARSE(app, argc, argv);
+
 	return 0;
 }
