@@ -109,7 +109,10 @@ std::expected<reader_data, std::string> process_grup_records(reader_data data)
 	{
 		if (grup_record_type != record_type::grup || !input.good())
 		{
-			return std::unexpected("Error during GRUP processing.");
+			const auto position = static_cast<std::int64_t>(input.tellg());
+			return std::unexpected(
+					std::format("Error during GRUP processing at position {} of file {}.", position, data.path)
+			);
 		}
 
 		constexpr auto grup_remaining_header_size =
@@ -140,6 +143,16 @@ std::expected<reader_data, std::string> process_grup_records(reader_data data)
 	return data;
 }
 
+std::expected<josk::tes::raw_record_groups, std::string> finish_reading(reader_data data)
+{
+	if (const auto& input = data.input; !input.eof())
+	{
+		return std::unexpected(std::format("Attempting to close unfinished file {}.", data.path));
+	}
+
+	return std::move(data.records);
+}
+
 }
 
 namespace josk::tes
@@ -153,13 +166,12 @@ std::expected<raw_record_groups, std::string> read_file(
 	auto data = initialize_reader(path, requested_record_types, input)
 									.and_then(open_file)
 									.and_then(validate_tes4_record)
-									.and_then(process_grup_records);
-	if (data.has_value())
-	{
-		return std::move(data->records);
-	}
+									.and_then(process_grup_records)
+									.and_then(finish_reading);
 
-	return {};
+	input.close();
+
+	return data;
 }
 
 }
