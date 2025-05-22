@@ -10,13 +10,12 @@
 #include <fstream>
 #include <ios>
 #include <string>
+#include <type_traits>
 #include <unordered_set>
 #include <utility>
 
 namespace
 {
-
-using josk::tes::record_type;
 
 template <std::integral integral_type>
 integral_type read_integral(std::ifstream& input)
@@ -27,12 +26,14 @@ integral_type read_integral(std::ifstream& input)
 	return value;
 }
 
+using josk::tes::record_type;
 record_type read_record_type(std::ifstream& input)
 {
-	return static_cast<record_type>(read_integral<std::uint32_t>(input));
+	return static_cast<record_type>(read_integral<std::underlying_type_t<record_type>>(input));
 }
 
-void jump_ahead(std::ifstream& input, const std::uint32_t jump_size)
+using josk::tes::tes_size_t;
+void jump_ahead(std::ifstream& input, const tes_size_t jump_size)
 {
 	input.seekg(input.tellg() + static_cast<std::ifstream::pos_type>(jump_size));
 }
@@ -93,8 +94,10 @@ std::expected<reader_data, std::string> validate_tes4_record(reader_data data)
 	}
 
 	// Record header size excluding the record type and data size fields.
-	constexpr std::uint32_t record_header_remaining_size = (sizeof(std::uint32_t) * 2U) + (sizeof(std::uint16_t) * 4U);
-	const auto tes4_record_remaining_size = read_integral<josk::tes::record_size_t>(input) + record_header_remaining_size;
+	constexpr tes_size_t record_header_remaining_size =
+			josk::tes::record_header_size - sizeof(record_type) - sizeof(tes_size_t);
+
+	const tes_size_t tes4_record_remaining_size = read_integral<tes_size_t>(input) + record_header_remaining_size;
 	jump_ahead(input, tes4_record_remaining_size);
 
 	return data;
@@ -115,13 +118,14 @@ std::expected<reader_data, std::string> process_grup_records(reader_data data)
 			);
 		}
 
-		constexpr auto grup_remaining_header_size =
-				(sizeof(std::uint8_t) * 4U) + sizeof(std::int32_t) + (sizeof(std::uint16_t) * 2U) + sizeof(std::uint32_t);
-		constexpr auto grup_total_header_size = grup_remaining_header_size + 8U;
+		constexpr tes_size_t grup_header_remaining_size =
+				josk::tes::group_header_size - sizeof(record_type) - sizeof(tes_size_t);
 
-		const std::uint32_t grup_remaining_data_size =
-				read_integral<std::uint32_t>(input) - grup_total_header_size - sizeof(record_type);
-		jump_ahead(input, grup_remaining_header_size);
+		// The first four bytes of the data will be read to find the contained record type.
+		const tes_size_t grup_remaining_data_size =
+				read_integral<tes_size_t>(input) - josk::tes::group_header_size - sizeof(record_type);
+
+		jump_ahead(input, grup_header_remaining_size);
 
 		if (const auto grup_contained_record_type = read_record_type(input);
 				data.requested_record_types.contains(grup_contained_record_type))

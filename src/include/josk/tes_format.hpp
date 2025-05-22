@@ -9,6 +9,14 @@ namespace josk::tes
 
 // For an in-depth description of the format, check the UESP documentation at:
 // https://en.uesp.net/wiki/Skyrim_Mod:Mod_File_Format
+
+/** Expresses data sizes in a TES file. */
+using tes_size_t = std::uint32_t;
+
+/** Form (or record) identifiers are unique ids for individual records. */
+using formid_t = std::uint32_t;
+
+/** Each record type has a 4 char unique identifier. josk simplifies processing by keeping them as integers. */
 enum class record_type : std::uint32_t
 {
 	// Used by josk to represent end of file and similar situations.
@@ -138,7 +146,10 @@ enum class record_type : std::uint32_t
 	wthr = to_record_type("WTHR")
 };
 
-using record_size_t = std::uint32_t;
-using formid_t = std::uint32_t;
+constexpr tes_size_t record_header_size =
+		sizeof(record_type) + sizeof(tes_size_t) + sizeof(std::uint32_t) + sizeof(formid_t) + (sizeof(std::uint16_t) * 4U);
+
+constexpr tes_size_t group_header_size = sizeof(record_type) + sizeof(tes_size_t) + (sizeof(std::uint8_t) * 4U) +
+																				 sizeof(std::int32_t) + (sizeof(std::uint16_t) * 2U) + sizeof(std::uint32_t);
 
 }

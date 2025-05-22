@@ -16,7 +16,7 @@ namespace josk::tes
  */
 consteval std::uint32_t to_record_type(const std::string_view str)
 {
-	if (constexpr std::size_t record_type_size = 4U; str.size() != record_type_size)
+	if (constexpr std::size_t record_type_size = sizeof(std::uint32_t); str.size() != record_type_size)
 	{
 		throw std::invalid_argument("Record type strings must have a size of 4.");
 	}
@@ -25,7 +25,7 @@ consteval std::uint32_t to_record_type(const std::string_view str)
 	for (int char_index = 3; char_index >= 0; --char_index)
 	{
 		result <<= CHAR_BIT;
-		result |= str[static_cast<std::size_t>(char_index)];
+		result |= static_cast<std::uint32_t>(str[static_cast<std::size_t>(char_index)]);
 	}
 
 	return result;
