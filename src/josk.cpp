@@ -10,6 +10,7 @@ int main(const int argc, char* argv[])
 	{
 		// ToDo hardcoded for now.
 		using josk::tes::record_type;
+		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 		const auto result = josk::tes::read_file(argv[1], std::unordered_set{record_type::avif});
 		if (result.has_value())
 		{

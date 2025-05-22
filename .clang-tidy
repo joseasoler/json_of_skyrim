@@ -27,6 +27,8 @@ WarningsAsErrors: '*'
 # All clang-checks are enabled by default, except for some project-specific diagnostics.
 #
 # Checks producing undesirable results or false positives are disabled explicitly documenting the reason below.
+# bugprone-exception-escape: Reports false positives in structs which use std::ifstream.
+# cppcoreguidelines-avoid-const-or-ref-data-members: Refs are used to send data through std::expected execution chains.
 # llvm-header-guard: Allow use of #pragma once
 # llvm-namespace-comment: Do not require closing comments in namespaces as they can be shown by IDEs.
 # modernize-use-trailing-return-type: Do not force use of trailing return types.
@@ -41,6 +43,8 @@ Checks: '
 -llvmlibc-*,
 -zircon-*,
 
+-bugprone-exception-escape,
+-cppcoreguidelines-avoid-const-or-ref-data-members,
 -llvm-header-guard,
 -llvm-namespace-comment,
 -modernize-use-trailing-return-type,

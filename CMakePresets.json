@@ -13,7 +13,8 @@
 			"generator": "Ninja",
 			"cacheVariables": {
 				"CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-				"CMAKE_COMPILE_WARNING_AS_ERROR": "ON"
+				"CMAKE_COMPILE_WARNING_AS_ERROR": "ON",
+				"JOSK_CLANG_TIDY": "ON"
 			}
 		},
 		{

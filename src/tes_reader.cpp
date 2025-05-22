@@ -3,7 +3,6 @@
 
 #include <cassert>
 #include <concepts>
-#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <filesystem>
@@ -40,14 +39,21 @@ void jump_ahead(std::ifstream& input, const std::uint32_t jump_size)
 
 struct reader_data final
 {
-	const char* path{};
-	const std::unordered_set<record_type>* requested_record_types;
-	std::ifstream input;
+	const char* path;
+	const std::unordered_set<record_type>& requested_record_types;
+	std::ifstream& input;
 	josk::tes::raw_record_groups records;
+
+	reader_data(const char* file_path, const std::unordered_set<record_type>& record_types, std::ifstream& input_stream)
+		: path{file_path}
+		, requested_record_types{record_types}
+		, input{input_stream}
+	{
+	}
 };
 
 std::expected<reader_data, std::string> initialize_reader(
-		const char* path, const std::unordered_set<record_type>& requested_record_types
+		const char* path, const std::unordered_set<record_type>& requested_record_types, std::ifstream& input
 )
 {
 	if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
@@ -60,10 +66,7 @@ std::expected<reader_data, std::string> initialize_reader(
 		return std::unexpected("At least one record type must be requested.");
 	}
 
-	reader_data data{};
-	data.path = path;
-	data.requested_record_types = &requested_record_types;
-	return data;
+	return reader_data(path, requested_record_types, input);
 }
 
 std::expected<reader_data, std::string> open_file(reader_data data)
@@ -118,7 +121,7 @@ std::expected<reader_data, std::string> process_grup_records(reader_data data)
 		jump_ahead(input, grup_remaining_header_size);
 
 		if (const auto grup_contained_record_type = read_record_type(input);
-				data.requested_record_types->contains(grup_contained_record_type))
+				data.requested_record_types.contains(grup_contained_record_type))
 		{
 			assert(!data.records.contains(grup_contained_record_type));
 			auto& record_group_data = data.records[grup_contained_record_type];
@@ -146,7 +149,8 @@ std::expected<raw_record_groups, std::string> read_file(
 		const char* path, const std::unordered_set<record_type>& requested_record_types
 )
 {
-	auto data = initialize_reader(path, requested_record_types)
+	std::ifstream input;
+	auto data = initialize_reader(path, requested_record_types, input)
 									.and_then(open_file)
 									.and_then(validate_tes4_record)
 									.and_then(process_grup_records);

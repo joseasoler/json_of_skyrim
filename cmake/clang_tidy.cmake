@@ -1,5 +1,7 @@
 include_guard(GLOBAL)
 
+option(JOSK_CLANG_TIDY "Analyze the project with clang-tidy" OFF)
+
 if (JOSK_CLANG_TIDY)
 	find_program(
 		JOSK_CLANG_TIDY_BINARY
