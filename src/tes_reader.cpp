@@ -4,6 +4,7 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <cstring>
 #include <expected>
 #include <filesystem>
 #include <format>
@@ -121,7 +122,8 @@ std::expected<reader_data, std::string> process_grup_records(reader_data data)
 		constexpr tes_size_t grup_header_remaining_size =
 				josk::tes::group_header_size - sizeof(record_type) - sizeof(tes_size_t);
 
-		// The first four bytes of the data will be read to find the contained record type.
+		// The data field of GRUP records includes the header size, and the first record type will be read to identify the
+		// record type stored in the group.
 		const tes_size_t grup_remaining_data_size =
 				read_integral<tes_size_t>(input) - josk::tes::group_header_size - sizeof(record_type);
 
@@ -130,10 +132,14 @@ std::expected<reader_data, std::string> process_grup_records(reader_data data)
 		if (const auto grup_contained_record_type = read_record_type(input);
 				data.requested_record_types.contains(grup_contained_record_type))
 		{
+			// josk assumes that a single file never has more than one group of the same record type.
 			assert(!data.records.contains(grup_contained_record_type));
 			auto& record_group_data = data.records[grup_contained_record_type];
-			record_group_data.resize(grup_remaining_data_size);
-			input.read(record_group_data.data(), grup_remaining_data_size);
+			record_group_data.resize(grup_remaining_data_size + sizeof(record_type));
+			// Manually copy the first record type to the start of the data.
+			std::memcpy(record_group_data.data(), &grup_contained_record_type, sizeof(record_type));
+			// Then read the remaining data.
+			input.read(record_group_data.data() + sizeof(record_type), grup_remaining_data_size);
 		}
 		else
 		{

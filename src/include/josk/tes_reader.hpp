@@ -11,10 +11,7 @@
 namespace josk::tes
 {
 
-/**
- * The data vector contains unparsed group data for all the records of that record type.
- * The first record type in the data vector is missing its record_type.
- */
+/** Maps a contained record type to the unparsed group data storing all records of that type. */
 using raw_record_groups = std::unordered_map<record_type, std::vector<char>>;
 
 /**

@@ -29,6 +29,7 @@ WarningsAsErrors: '*'
 # Checks producing undesirable results or false positives are disabled explicitly documenting the reason below.
 # bugprone-exception-escape: Reports false positives in structs which use std::ifstream.
 # cppcoreguidelines-avoid-const-or-ref-data-members: Refs are used to send data through std::expected execution chains.
+# cppcoreguidelines-pro-bounds-pointer-arithmetic: Pointer arithmetic used during low-level file IO operations.
 # llvm-header-guard: Allow use of #pragma once
 # llvm-namespace-comment: Do not require closing comments in namespaces as they can be shown by IDEs.
 # modernize-use-trailing-return-type: Do not force use of trailing return types.
@@ -45,6 +46,7 @@ Checks: '
 
 -bugprone-exception-escape,
 -cppcoreguidelines-avoid-const-or-ref-data-members,
+-cppcoreguidelines-pro-bounds-pointer-arithmetic,
 -llvm-header-guard,
 -llvm-namespace-comment,
 -modernize-use-trailing-return-type,
