@@ -146,10 +146,19 @@ enum class record_type : std::uint32_t
 	wthr = to_record_type("WTHR")
 };
 
-constexpr tes_size_t record_header_size =
-		sizeof(record_type) + sizeof(tes_size_t) + sizeof(std::uint32_t) + sizeof(formid_t) + (sizeof(std::uint16_t) * 4U);
+template <typename type>
+consteval tes_size_t tes_size_of()
+{
+	return static_cast<tes_size_t>(sizeof(type));
+}
 
-constexpr tes_size_t group_header_size = sizeof(record_type) + sizeof(tes_size_t) + (sizeof(std::uint8_t) * 4U) +
-																				 sizeof(std::int32_t) + (sizeof(std::uint16_t) * 2U) + sizeof(std::uint32_t);
+constexpr auto record_type_size = tes_size_of<record_type>();
+
+constexpr tes_size_t record_header_size = record_type_size + tes_size_of<tes_size_t>() + tes_size_of<std::uint32_t>() +
+																					tes_size_of<formid_t>() + (tes_size_of<std::uint16_t>() * 4U);
+
+constexpr tes_size_t group_header_size = record_type_size + tes_size_of<tes_size_t>() +
+																				 (tes_size_of<std::uint8_t>() * 4U) + tes_size_of<std::uint32_t>() +
+																				 (tes_size_of<std::uint16_t>() * 2U) + tes_size_of<std::uint32_t>();
 
 }

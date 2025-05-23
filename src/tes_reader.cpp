@@ -18,6 +18,11 @@
 namespace
 {
 
+using josk::tes::record_type;
+using josk::tes::record_type_size;
+using josk::tes::tes_size_of;
+using josk::tes::tes_size_t;
+
 template <std::integral integral_type>
 integral_type read_integral(std::ifstream& input)
 {
@@ -27,13 +32,11 @@ integral_type read_integral(std::ifstream& input)
 	return value;
 }
 
-using josk::tes::record_type;
 record_type read_record_type(std::ifstream& input)
 {
 	return static_cast<record_type>(read_integral<std::underlying_type_t<record_type>>(input));
 }
 
-using josk::tes::tes_size_t;
 void jump_ahead(std::ifstream& input, const tes_size_t jump_size)
 {
 	input.seekg(input.tellg() + static_cast<std::ifstream::pos_type>(jump_size));
@@ -96,7 +99,7 @@ std::expected<reader_data, std::string> validate_tes4_record(reader_data data)
 
 	// Record header size excluding the record type and data size fields.
 	constexpr tes_size_t record_header_remaining_size =
-			josk::tes::record_header_size - sizeof(record_type) - sizeof(tes_size_t);
+			josk::tes::record_header_size - record_type_size - tes_size_of<tes_size_t>();
 
 	const tes_size_t tes4_record_remaining_size = read_integral<tes_size_t>(input) + record_header_remaining_size;
 	jump_ahead(input, tes4_record_remaining_size);
@@ -120,14 +123,22 @@ std::expected<reader_data, std::string> process_grup_records(reader_data data)
 		}
 
 		constexpr tes_size_t grup_header_remaining_size =
-				josk::tes::group_header_size - sizeof(record_type) - sizeof(tes_size_t);
+				josk::tes::group_header_size - record_type_size - tes_size_of<tes_size_t>();
 
-		// The data field of GRUP records includes the header size, and the first record type will be read to identify the
-		// record type stored in the group.
-		const tes_size_t grup_remaining_data_size =
-				read_integral<tes_size_t>(input) - josk::tes::group_header_size - sizeof(record_type);
+		// Unlike records, the GRUP data field includes the header size.
+		const auto grup_total_size = read_integral<tes_size_t>(input);
 
 		jump_ahead(input, grup_header_remaining_size);
+
+		if (grup_total_size == josk::tes::group_header_size)
+		{
+			// Header-only group without data. The reader is already pointing to the next group. Skip and carry on.
+			grup_record_type = read_record_type(input);
+			continue;
+		}
+
+		const tes_size_t grup_data_size = grup_total_size - josk::tes::group_header_size;
+		const tes_size_t grup_remaining_data_size = grup_data_size - record_type_size;
 
 		if (const auto grup_contained_record_type = read_record_type(input);
 				data.requested_record_types.contains(grup_contained_record_type))
@@ -135,11 +146,11 @@ std::expected<reader_data, std::string> process_grup_records(reader_data data)
 			// josk assumes that a single file never has more than one group of the same record type.
 			assert(!data.records.contains(grup_contained_record_type));
 			auto& record_group_data = data.records[grup_contained_record_type];
-			record_group_data.resize(grup_remaining_data_size + sizeof(record_type));
+			record_group_data.resize(grup_data_size);
 			// Manually copy the first record type to the start of the data.
-			std::memcpy(record_group_data.data(), &grup_contained_record_type, sizeof(record_type));
-			// Then read the remaining data.
-			input.read(record_group_data.data() + sizeof(record_type), grup_remaining_data_size);
+			std::memcpy(record_group_data.data(), &grup_contained_record_type, record_type_size);
+			// Read the remaining data directly into the array.
+			input.read(record_group_data.data() + record_type_size, grup_remaining_data_size);
 		}
 		else
 		{
