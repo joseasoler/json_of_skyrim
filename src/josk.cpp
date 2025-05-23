@@ -1,15 +1,14 @@
 #include <josk/cli.hpp>
-#include <josk/tes_format.hpp>
-#include <josk/tes_reader.hpp>
+#include <josk/task_load.hpp>
+#include <josk/task_load_order.hpp>
+#include <josk/tasks.hpp>
 
 #include <CLI/App.hpp>
 
 #include <cstdio>
 #include <cstdlib>
 #include <expected>
-#include <filesystem>
 #include <print>
-#include <string>
 
 int main(const int argc, char* argv[])
 {
@@ -22,10 +21,26 @@ int main(const int argc, char* argv[])
 		std::println(stderr, "{}", validation.error());
 		return EXIT_FAILURE;
 	}
-	// ToDo carry on with using the arguments properly and implementing the rest of the data flow.
 
-	const auto skyrim_esm_path = arguments.skyrim_data_path / "Skyrim.esm";
-	const auto result = josk::tes::read_file(skyrim_esm_path.string().data(), {josk::tes::record_type::avif});
+	auto load_order_result = josk::parse_load_order(arguments.load_order_path);
 
+	if (!load_order_result.has_value())
+	{
+		std::println(stderr, "{}", load_order_result.error());
+		return EXIT_FAILURE;
+	}
+
+	constexpr auto* skyrim_filename = "Skyrim.esm";
+	if (!load_order_result->contains(skyrim_filename))
+	{
+		std::println(stderr, "Could not load skyrim file.");
+		return EXIT_FAILURE;
+	}
+
+	josk::task::load_task load_task{};
+	load_task.priority = load_order_result.value()[skyrim_filename];
+	load_task.path = arguments.skyrim_data_path / skyrim_filename;
+
+	const auto read_file_result = josk::load_file(load_task);
 	return EXIT_SUCCESS;
 }

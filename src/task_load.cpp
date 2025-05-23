@@ -1,5 +1,6 @@
+#include <josk/task_load.hpp>
+#include <josk/tasks.hpp>
 #include <josk/tes_format.hpp>
-#include <josk/tes_reader.hpp>
 
 #include <cassert>
 #include <concepts>
@@ -23,6 +24,12 @@ using josk::tes::record_type_size;
 using josk::tes::tes_size_of;
 using josk::tes::tes_size_t;
 
+const std::unordered_set<record_type>& requested_records()
+{
+	static const std::unordered_set records{record_type::avif};
+	return records;
+}
+
 template <std::integral integral_type>
 integral_type read_integral(std::ifstream& input)
 {
@@ -42,75 +49,43 @@ void jump_ahead(std::ifstream& input, const tes_size_t jump_size)
 	input.seekg(input.tellg() + static_cast<std::ifstream::pos_type>(jump_size));
 }
 
-struct reader_data final
-{
-	const char* path;
-	const std::unordered_set<record_type>& requested_record_types;
-	std::ifstream& input;
-	josk::tes::raw_record_groups records;
+}
 
-	reader_data(const char* file_path, const std::unordered_set<record_type>& record_types, std::ifstream& input_stream)
-		: path{file_path}
-		, requested_record_types{record_types}
-		, input{input_stream}
-	{
-	}
-};
-
-std::expected<reader_data, std::string> initialize_reader(
-		const char* path, const std::unordered_set<record_type>& requested_record_types, std::ifstream& input
-)
+namespace josk
 {
+
+std::expected<task::preparse_task, std::string> load_file(const task::load_task& task)
+{
+	const auto& path = task.path;
 	if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
 	{
-		return std::unexpected(std::format("Could not find file {}.", path));
+		return std::unexpected(std::format("Could not find file {}.", task.filename));
 	}
 
-	if (requested_record_types.empty())
-	{
-		return std::unexpected("At least one record type must be requested.");
-	}
-
-	return reader_data(path, requested_record_types, input);
-}
-
-std::expected<reader_data, std::string> open_file(reader_data data)
-{
 	constexpr auto open_flags = static_cast<std::ios_base::openmode>(
-			static_cast<unsigned int>(std::ios::binary) | static_cast<unsigned int>(std::ios::out)
+			static_cast<unsigned int>(std::ios::binary) | static_cast<unsigned int>(std::ios::in)
 	);
 
-	data.input.open(data.path, open_flags);
-	if (!data.input.is_open() || !data.input.good())
+	std::ifstream input(task.path, open_flags);
+	if (!input.is_open() || !input.good())
 	{
-		return std::unexpected(std::format("Could not open file {}.", data.path));
+		return std::unexpected(std::format("Could not open file {}.", task.filename));
 	}
 
-	return data;
-}
-
-std::expected<reader_data, std::string> validate_tes4_record(reader_data data)
-{
-	auto& input = data.input;
 	if (const auto tes4_record_type = read_record_type(input); tes4_record_type != record_type::tes4 || !input.good())
 	{
-		return std::unexpected(std::format("{} is not a TES4 file", data.path));
+		return std::unexpected(std::format("{} is not a TES4 file", task.filename));
 	}
 
-	// Record header size excluding the record type and data size fields.
+	// TES4 record header size excluding the record type and data size fields.
 	constexpr tes_size_t record_header_remaining_size =
-			josk::tes::record_header_size - record_type_size - tes_size_of<tes_size_t>();
+			tes::record_header_size - record_type_size - tes_size_of<tes_size_t>();
 
 	const tes_size_t tes4_record_remaining_size = read_integral<tes_size_t>(input) + record_header_remaining_size;
 	jump_ahead(input, tes4_record_remaining_size);
 
-	return data;
-}
-
-std::expected<reader_data, std::string> process_grup_records(reader_data data)
-{
-	auto& input = data.input;
-
+	// Read the different group records.
+	task::raw_record_groups record_groups{};
 	auto grup_record_type = read_record_type(input);
 	while (!input.eof())
 	{
@@ -118,34 +93,34 @@ std::expected<reader_data, std::string> process_grup_records(reader_data data)
 		{
 			const auto position = static_cast<std::int64_t>(input.tellg());
 			return std::unexpected(
-					std::format("Error during GRUP processing at position {} of file {}.", position, data.path)
+					std::format("Error during GRUP processing at position {} of file {}.", position, task.filename)
 			);
 		}
 
 		constexpr tes_size_t grup_header_remaining_size =
-				josk::tes::group_header_size - record_type_size - tes_size_of<tes_size_t>();
+				tes::group_header_size - record_type_size - tes_size_of<tes_size_t>();
 
 		// Unlike records, the GRUP data field includes the header size.
 		const auto grup_total_size = read_integral<tes_size_t>(input);
 
 		jump_ahead(input, grup_header_remaining_size);
 
-		if (grup_total_size == josk::tes::group_header_size)
+		if (grup_total_size == tes::group_header_size)
 		{
 			// Header-only group without data. The reader is already pointing to the next group. Skip and carry on.
 			grup_record_type = read_record_type(input);
 			continue;
 		}
 
-		const tes_size_t grup_data_size = grup_total_size - josk::tes::group_header_size;
+		const tes_size_t grup_data_size = grup_total_size - tes::group_header_size;
 		const tes_size_t grup_remaining_data_size = grup_data_size - record_type_size;
 
 		if (const auto grup_contained_record_type = read_record_type(input);
-				data.requested_record_types.contains(grup_contained_record_type))
+				requested_records().contains(grup_contained_record_type))
 		{
 			// josk assumes that a single file never has more than one group of the same record type.
-			assert(!data.records.contains(grup_contained_record_type));
-			auto& record_group_data = data.records[grup_contained_record_type];
+			assert(!record_groups.contains(grup_contained_record_type));
+			auto& record_group_data = record_groups[grup_contained_record_type];
 			record_group_data.resize(grup_data_size);
 			// Manually copy the first record type to the start of the data.
 			std::memcpy(record_group_data.data(), &grup_contained_record_type, record_type_size);
@@ -161,38 +136,13 @@ std::expected<reader_data, std::string> process_grup_records(reader_data data)
 		grup_record_type = read_record_type(input);
 	}
 
-	return data;
-}
-
-std::expected<josk::tes::raw_record_groups, std::string> finish_reading(reader_data data)
-{
-	if (const auto& input = data.input; !input.eof())
-	{
-		return std::unexpected(std::format("Attempting to close unfinished file {}.", data.path));
-	}
-
-	return std::move(data.records);
-}
-
-}
-
-namespace josk::tes
-{
-
-std::expected<raw_record_groups, std::string> read_file(
-		const char* path, const std::unordered_set<record_type>& requested_record_types
-)
-{
-	std::ifstream input;
-	auto data = initialize_reader(path, requested_record_types, input)
-									.and_then(open_file)
-									.and_then(validate_tes4_record)
-									.and_then(process_grup_records)
-									.and_then(finish_reading);
-
 	input.close();
 
-	return data;
+	task::preparse_task new_task{};
+	new_task.priority = task.priority;
+	new_task.filename = task.filename;
+	new_task.groups = std::move(record_groups);
+	return new_task;
 }
 
 }

@@ -1,7 +1,8 @@
 add_executable(josk
 		cli.cpp
 		josk.cpp
-		tes_reader.cpp
+		task_load.cpp
+		task_load_order.cpp
 		${PROJECT_SOURCE_DIR}/josk_application.manifest
 )
 
