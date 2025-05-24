@@ -16,26 +16,13 @@ namespace josk::task
 using priority_t = std::int64_t;
 constexpr priority_t invalid_priority{-1};
 
-/** Maps each load order filename with its priority. */
-using load_order_data = std::unordered_map<std::string, priority_t>;
-
-/** Find plugins in the filesystem. */
-/*
-struct find_plugins_task final
-{
-	load_order_data load_order;
-	std::filesystem::path skyrim_data_path;
-	// std::filesystem::path mods_path;
-};
-*/
-
 /** Common fields for tasks related to an individual file. */
 struct task_file
 {
 	/** Tasks with lower priorities will be undertaken first. */
 	priority_t priority{invalid_priority};
 	/** Plugin filename. */
-	std::string_view filename;
+	std::string filename;
 };
 
 /** Load a file from the filesystem. */

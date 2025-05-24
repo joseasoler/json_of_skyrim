@@ -21,10 +21,11 @@ elseif (JOSK_CXX_COMPILER_MSVC)
 		JOSK_COMPILER_CLANG=0
 		JOSK_COMPILER_GCC=0
 		JOSK_COMPILER_MSVC=1
+		# In case the project ever needs to access the Windows API directly.
 		NOMINMAX
 		WIN32_LEAN_AND_MEAN
 	)
-	# UTF-8 support is applied globally.
+	# UTF-8 support is applied globally. See UTF-8 Everywhere for details.
 	add_compile_definitions(UNICODE _UNICODE)
 	add_compile_options(/utf-8)
 	# Enable preprocessor conformance mode.

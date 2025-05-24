@@ -1,7 +1,6 @@
 #pragma once
 
 #include <expected>
-#include <filesystem>
 #include <string>
 
 namespace CLI
@@ -13,10 +12,10 @@ namespace josk::cli
 {
 struct args final
 {
-	std::filesystem::path load_order_path;
-	std::filesystem::path skyrim_data_path;
-	std::filesystem::path mods_path;
-	std::filesystem::path output_path;
+	std::string load_order_path;
+	std::string skyrim_data_path;
+	std::string mods_path;
+	std::string output_path;
 };
 
 void configure_cli(CLI::App& app, args& arguments);

@@ -26,6 +26,8 @@ include(cmake/compiler_warnings.cmake)
 include(cmake/clang_format.cmake)
 include(cmake/clang_tidy.cmake)
 
+# Dependencies.
 find_package(CLI11 CONFIG REQUIRED)
 
+# Source code.
 add_subdirectory(src)

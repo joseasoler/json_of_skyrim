@@ -1,7 +1,6 @@
 #include <josk/cli.hpp>
+#include <josk/task_find_plugins.hpp>
 #include <josk/task_load.hpp>
-#include <josk/task_load_order.hpp>
-#include <josk/tasks.hpp>
 
 #include <CLI/App.hpp>
 
@@ -22,25 +21,16 @@ int main(const int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	auto load_order_result = josk::parse_load_order(arguments.load_order_path);
+	const auto find_plugins_result = josk::find_plugins(arguments);
 
-	if (!load_order_result.has_value())
+	if (!find_plugins_result.has_value())
 	{
-		std::println(stderr, "{}", load_order_result.error());
+		std::println(stderr, "{}", find_plugins_result.error());
 		return EXIT_FAILURE;
 	}
 
-	constexpr auto* skyrim_filename = "Skyrim.esm";
-	if (!load_order_result->contains(skyrim_filename))
-	{
-		std::println(stderr, "Could not load skyrim file.");
-		return EXIT_FAILURE;
-	}
+	const auto& test_task = find_plugins_result.value().front();
 
-	josk::task::task_load_file load_task{};
-	load_task.priority = load_order_result.value()[skyrim_filename];
-	load_task.path = arguments.skyrim_data_path / skyrim_filename;
-
-	[[maybe_unused]] const auto load_file_result = josk::load_file(load_task);
+	[[maybe_unused]] const auto load_file_result = josk::load_file(test_task);
 	return EXIT_SUCCESS;
 }
