@@ -37,10 +37,10 @@ int main(const int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	josk::task::load_task load_task{};
+	josk::task::task_load_file load_task{};
 	load_task.priority = load_order_result.value()[skyrim_filename];
 	load_task.path = arguments.skyrim_data_path / skyrim_filename;
 
-	const auto read_file_result = josk::load_file(load_task);
+	[[maybe_unused]] const auto load_file_result = josk::load_file(load_task);
 	return EXIT_SUCCESS;
 }

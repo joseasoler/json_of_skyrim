@@ -54,10 +54,9 @@ void jump_ahead(std::ifstream& input, const tes_size_t jump_size)
 namespace josk
 {
 
-std::expected<task::preparse_task, std::string> load_file(const task::load_task& task)
+std::expected<task::task_preparse_records, std::string> load_file(const task::task_load_file& task)
 {
-	const auto& path = task.path;
-	if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
+	if (const auto& path = task.path; !std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
 	{
 		return std::unexpected(std::format("Could not find file {}.", task.filename));
 	}
@@ -138,7 +137,7 @@ std::expected<task::preparse_task, std::string> load_file(const task::load_task&
 
 	input.close();
 
-	task::preparse_task new_task{};
+	task::task_preparse_records new_task{};
 	new_task.priority = task.priority;
 	new_task.filename = task.filename;
 	new_task.groups = std::move(record_groups);

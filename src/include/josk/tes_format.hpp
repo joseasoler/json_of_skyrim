@@ -19,12 +19,13 @@ using formid_t = std::uint32_t;
 /** Each record type has a 4 char unique identifier. josk simplifies processing by keeping them as integers. */
 enum class record_type : std::uint32_t
 {
-	// Used by josk to represent end of file and similar situations.
+	// Used by josk to represent end of file, errors, and other conditions.
 	none = 0U,
 
 	tes4 = to_record_type("TES4"),
 	grup = to_record_type("GRUP"),
 
+	// Most of these will never be used by josk, but they are useful for parsing debugging.
 	aact = to_record_type("AACT"),
 	achr = to_record_type("ACHR"),
 	acti = to_record_type("ACTI"),

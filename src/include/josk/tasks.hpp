@@ -21,7 +21,7 @@ using load_order_data = std::unordered_map<std::string, priority_t>;
 
 /** Find plugins in the filesystem. */
 /*
-struct search_plugins_task final
+struct find_plugins_task final
 {
 	load_order_data load_order;
 	std::filesystem::path skyrim_data_path;
@@ -30,7 +30,7 @@ struct search_plugins_task final
 */
 
 /** Common fields for tasks related to an individual file. */
-struct file_task
+struct task_file
 {
 	/** Tasks with lower priorities will be undertaken first. */
 	priority_t priority{invalid_priority};
@@ -39,7 +39,7 @@ struct file_task
 };
 
 /** Load a file from the filesystem. */
-struct load_task final : file_task
+struct task_load_file final : task_file
 {
 	std::filesystem::path path;
 };
@@ -48,22 +48,17 @@ struct load_task final : file_task
 using raw_record_groups = std::unordered_map<tes::record_type, std::vector<char>>;
 
 /** Split groups into individual records, identifying them by formid. */
-struct preparse_task final : file_task
+struct task_preparse_records final : task_file
 {
 	raw_record_groups groups;
 };
 
+using preparsed_record_groups =
+		std::unordered_map<tes::record_type, std::unordered_map<tes::formid_t, std::vector<char>>>;
+
 /*
-struct preparsed_record final
-{
-	tes::formid_t id{};
-	std::vector<char> data;
-};
-
-using preparsed_record_groups = std::unordered_map<tes::record_type, std::vector<preparsed_record>>;
-
 // Records ready to be merged.
-struct merge_task final : file_task
+struct task_merge_records final : task_file
 {
 	preparsed_record_groups groups;
 };

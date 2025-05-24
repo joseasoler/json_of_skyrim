@@ -13,6 +13,6 @@ namespace josk
  * @param task Information about the task to perform.
  * @return Task for preparsing the loaded information, or an error.
  */
-std::expected<task::preparse_task, std::string> load_file(const task::load_task& task);
+std::expected<task::task_preparse_records, std::string> load_file(const task::task_load_file& task);
 
 }
