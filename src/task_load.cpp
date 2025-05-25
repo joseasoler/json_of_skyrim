@@ -26,7 +26,7 @@ using josk::tes::tes_size_t;
 
 const std::unordered_set<record_type>& requested_records()
 {
-	static const std::unordered_set records{record_type::avif};
+	static const std::unordered_set records{record_type::avif, record_type::perk};
 	return records;
 }
 

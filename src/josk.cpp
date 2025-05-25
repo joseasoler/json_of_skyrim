@@ -1,6 +1,7 @@
 #include <josk/cli.hpp>
 #include <josk/task_find_plugins.hpp>
 #include <josk/task_load.hpp>
+#include <josk/tasks.hpp>
 
 #include <CLI/App.hpp>
 
@@ -8,6 +9,8 @@
 #include <cstdlib>
 #include <expected>
 #include <print>
+#include <utility>
+#include <vector>
 
 int main(const int argc, char* argv[])
 {
@@ -29,8 +32,20 @@ int main(const int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	const auto& test_task = find_plugins_result.value().front();
+	std::vector<josk::task::task_preparse_records> result{};
+	for (const auto& preparse_task : find_plugins_result.value())
+	{
+		auto load_file_result = josk::load_file(preparse_task);
+		if (!load_file_result.has_value())
+		{
+			std::println(stderr, "{}", load_file_result.error());
+			return EXIT_FAILURE;
+		}
+		if (auto& load_file_data = load_file_result.value(); !load_file_data.groups.empty())
+		{
+			result.emplace_back(std::move(load_file_data));
+		}
+	}
 
-	[[maybe_unused]] const auto load_file_result = josk::load_file(test_task);
-	return EXIT_SUCCESS;
+	return !result.empty() ? EXIT_SUCCESS : EXIT_FAILURE;
 }
