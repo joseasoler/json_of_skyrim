@@ -40,15 +40,16 @@ struct task_preparse_records final : task_file
 	raw_record_groups groups;
 };
 
-using preparsed_record_groups =
-		std::unordered_map<tes::record_type, std::unordered_map<tes::formid_t, std::vector<char>>>;
+/** Only the formid is parsed, and maps to the entire unparsed record data. */
+using preparsed_record_group = std::unordered_map<tes::formid_t, std::vector<char>>;
 
-/*
-// Records ready to be merged.
+/** Maps record type to preparsed records of that type. */
+using preparsed_record_groups = std::unordered_map<tes::record_type, preparsed_record_group>;
+
+/** Records to be merged. */
 struct task_merge_records final : task_file
 {
 	preparsed_record_groups groups;
 };
-*/
 
 }

@@ -12,6 +12,8 @@
 #include <utility>
 #include <vector>
 
+#include "josk/task_preparse.hpp"
+
 int main(const int argc, char* argv[])
 {
 	CLI::App app{};
@@ -32,10 +34,10 @@ int main(const int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	std::vector<josk::task::task_preparse_records> result{};
-	for (const auto& preparse_task : find_plugins_result.value())
+	std::vector<josk::task::task_preparse_records> preparse_tasks{};
+	for (const auto& load_file_task : find_plugins_result.value())
 	{
-		auto load_file_result = josk::load_file(preparse_task);
+		auto load_file_result = josk::load_file(load_file_task);
 		if (!load_file_result.has_value())
 		{
 			std::println(stderr, "{}", load_file_result.error());
@@ -43,9 +45,24 @@ int main(const int argc, char* argv[])
 		}
 		if (auto& load_file_data = load_file_result.value(); !load_file_data.groups.empty())
 		{
-			result.emplace_back(std::move(load_file_data));
+			preparse_tasks.emplace_back(std::move(load_file_data));
 		}
 	}
 
-	return !result.empty() ? EXIT_SUCCESS : EXIT_FAILURE;
+	std::vector<josk::task::task_merge_records> merge_tasks{};
+	for (const auto& preparse_task : preparse_tasks)
+	{
+		auto preparse_result = josk::preparse_file(preparse_task);
+		if (!preparse_result.has_value())
+		{
+			std::println(stderr, "{}", preparse_result.error());
+			return EXIT_FAILURE;
+		}
+		if (auto& preparse_file_data = preparse_result.value(); !preparse_file_data.groups.empty())
+		{
+			merge_tasks.emplace_back(std::move(preparse_file_data));
+		}
+	}
+
+	return !merge_tasks.empty() ? EXIT_SUCCESS : EXIT_FAILURE;
 }
