@@ -3,53 +3,44 @@
 #include <josk/tes_format.hpp>
 
 #include <cstdint>
+#include <expected>
 #include <filesystem>
 #include <string>
-#include <string_view>
 #include <unordered_map>
 #include <vector>
 
 namespace josk::task
 {
 
-/** Priority of a task. Corresponds to the load order of the file. */
-using priority_t = std::int64_t;
-constexpr priority_t invalid_priority{-1};
+using load_order_t = std::int32_t;
+constexpr load_order_t invalid_order{-1};
 
-/** Common fields for tasks related to an individual file. */
-struct task_file
-{
-	/** Tasks with lower priorities will be undertaken first. */
-	priority_t priority{invalid_priority};
-	/** Plugin filename. */
-	std::string filename;
-};
+/** Maps each plugin name to its priority. */
+using load_order_data = std::unordered_map<std::string, load_order_t>;
 
-/** Load a file from the filesystem. */
-struct task_load_file final : task_file
+/** Parse the file detailing the load order of all plugins. */
+std::expected<load_order_data, std::string> get_load_order(const std::filesystem::path& load_order_path);
+
+struct plugin_file
 {
+	load_order_t load_order;
 	std::filesystem::path path;
 };
 
-/** Maps a contained record type to raw group data storing all records of that type. */
-using raw_record_groups = std::unordered_map<tes::record_type, std::vector<char>>;
+using plugin_files = std::vector<plugin_file>;
 
-/** Split groups into individual records, identifying them by formid. */
-struct task_preparse_records final : task_file
-{
-	raw_record_groups groups;
-};
+/** List of plugin files to be loaded, sorted by inverse load order. */
+std::expected<plugin_files, std::string> find_plugins(
+		const std::filesystem::path& skyrim_data_path, load_order_data& load_order, const std::filesystem::path& mods_path
+);
 
-/** Only the formid is parsed, and maps to the entire unparsed record data. */
-using preparsed_record_group = std::unordered_map<tes::formid_t, std::vector<char>>;
+/** Maps the formid of each unparsed record to its unparsed data field. */
+using record_group = std::unordered_map<tes::formid_t, std::vector<char>>;
 
-/** Maps record type to preparsed records of that type. */
-using preparsed_record_groups = std::unordered_map<tes::record_type, preparsed_record_group>;
+/** Maps record type to all records of that type. */
+using record_groups = std::unordered_map<tes::record_type, record_group>;
 
-/** Records to be merged. */
-struct task_merge_records final : task_file
-{
-	preparsed_record_groups groups;
-};
+/** Loads plugin files, preparses its records, and merges them with other files. */
+std::expected<record_groups, std::string> preparse_and_merge_plugins(const plugin_files& plugins);
 
 }
