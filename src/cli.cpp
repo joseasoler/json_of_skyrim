@@ -26,38 +26,40 @@ std::expected<void, std::string> validate_arguments(const arguments_t& arguments
 	namespace fs = std::filesystem;
 	if (!fs::exists(arguments.load_order_path))
 	{
-		return std::unexpected(std::format("Load order file {} does not exist.", arguments.load_order_path));
+		return std::unexpected(std::format("Load order file {} does not exist.", arguments.load_order_path.string()));
 	}
 	if (!fs::is_regular_file(arguments.load_order_path))
 	{
-		return std::unexpected(std::format("Load order path {} is not a regular file.", arguments.load_order_path));
+		return std::unexpected(
+				std::format("Load order path {} is not a regular file.", arguments.load_order_path.string())
+		);
 	}
 
 	if (!fs::exists(arguments.skyrim_data_path))
 	{
-		return std::unexpected(std::format("Skyrim data path {} does not exist.", arguments.skyrim_data_path));
+		return std::unexpected(std::format("Skyrim data path {} does not exist.", arguments.skyrim_data_path.string()));
 	}
 	if (!fs::is_directory(arguments.skyrim_data_path))
 	{
-		return std::unexpected(std::format("Skyrim path {} is not a directory.", arguments.skyrim_data_path));
+		return std::unexpected(std::format("Skyrim path {} is not a directory.", arguments.skyrim_data_path.string()));
 	}
 
 	if (!fs::exists(arguments.mods_path))
 	{
-		return std::unexpected(std::format("Mods path {} does not exist.", arguments.mods_path));
+		return std::unexpected(std::format("Mods path {} does not exist.", arguments.mods_path.string()));
 	}
 	if (!fs::is_directory(arguments.mods_path))
 	{
-		return std::unexpected(std::format("Mods {} is not a directory.", arguments.mods_path));
+		return std::unexpected(std::format("Mods {} is not a directory.", arguments.mods_path.string()));
 	}
 
 	if (!fs::exists(arguments.output_path))
 	{
-		return std::unexpected(std::format("Output path {} does not exist.", arguments.output_path));
+		return std::unexpected(std::format("Output path {} does not exist.", arguments.output_path.string()));
 	}
 	if (!fs::is_directory(arguments.output_path))
 	{
-		return std::unexpected(std::format("Output {} is not a directory.", arguments.output_path));
+		return std::unexpected(std::format("Output {} is not a directory.", arguments.output_path.string()));
 	}
 
 	return {};
