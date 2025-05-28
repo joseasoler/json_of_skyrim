@@ -19,7 +19,7 @@ int main(const int argc, char* argv[])
 																.and_then(josk::task::initialize_parsing)
 																.and_then(josk::task::parse_load_order)
 																.and_then(josk::task::find_plugins)
-																.and_then(josk::task::preparse_plugins);
+																.and_then(josk::task::parse_plugins);
 
 	if (!tasks_result.has_value())
 	{

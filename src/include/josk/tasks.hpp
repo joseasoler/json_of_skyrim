@@ -41,7 +41,7 @@ using record_group_t = std::unordered_map<tes::formid_t, std::vector<char>>;
 /** Maps record type to all records of that type. */
 using plugin_groups_t = std::unordered_map<tes::record_type_t, record_group_t>;
 
-/** Loads plugin files, preparses its records, and merges them with other files. */
-std::expected<plugin_groups_t, std::string> preparse_plugins(const parse_data_t& parse_data);
+/** Loads plugin files, parses its records, and merges them with other files. */
+std::expected<plugin_groups_t, std::string> parse_plugins(const parse_data_t& parse_data);
 
 }

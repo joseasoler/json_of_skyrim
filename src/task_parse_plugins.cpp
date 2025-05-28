@@ -1,8 +1,8 @@
 #include <josk/tasks.hpp>
 #include <josk/tes_format.hpp>
+#include <josk/tes_parse.hpp>
 
 #include <cassert>
-#include <concepts>
 #include <cstdint>
 #include <expected>
 #include <filesystem>
@@ -10,7 +10,6 @@
 #include <fstream>
 #include <ios>
 #include <string>
-#include <type_traits>
 #include <unordered_set>
 
 namespace
@@ -18,31 +17,6 @@ namespace
 namespace fs = std::filesystem;
 using namespace josk::task;
 using namespace josk::tes;
-
-template <std::integral integral_type>
-integral_type parse_integral(std::ifstream& input)
-{
-	integral_type value{};
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	input.read(reinterpret_cast<char*>(&value), sizeof(value));
-	return value;
-}
-
-record_type_t parse_record_type(std::ifstream& input)
-{
-	return static_cast<record_type_t>(parse_integral<std::underlying_type_t<record_type_t>>(input));
-}
-
-void seek_ahead(std::ifstream& input, const tes_size_t jump_size)
-{
-	input.seekg(input.tellg() + static_cast<std::ifstream::pos_type>(jump_size));
-}
-
-const std::unordered_set<record_type_t>& requested_records()
-{
-	static const std::unordered_set records{record_type_t::avif, record_type_t::perk};
-	return records;
-}
 
 std::expected<void, std::string> preparse_record(std::ifstream& input, record_group_t& group)
 {
@@ -86,7 +60,7 @@ std::expected<void, std::string> preparse_group(std::ifstream& input, plugin_gro
 	const tes_size_t grup_data_size = grup_total_size - group_header_size;
 	const tes_size_t grup_remaining_data_size = grup_data_size - record_type_size;
 	if (const auto grup_contained_record_type = parse_record_type(input);
-			requested_records().contains(grup_contained_record_type))
+			required_records().contains(grup_contained_record_type))
 	{
 		// Seek back to the beginning of the first record.
 		input.seekg(input.tellg() - static_cast<std::ifstream::pos_type>(record_type_size));
@@ -123,13 +97,10 @@ std::expected<void, std::string> preparse_file(const fs::path& file_path, plugin
 	}
 
 	// Check and skip TES4 record.
-	if (const auto tes4_record_type = parse_record_type(input); tes4_record_type != record_type_t::tes4 || !input.good())
+	if (const auto tes4_result = parse_tes4_record(input); !tes4_result.has_value())
 	{
-		return std::unexpected(std::format("{} is not a TES4 file", file_path.string()));
+		return std::unexpected(std::format("{}: {}", file_path.string(), tes4_result.error()));
 	}
-	// Remaining header size after parsing record type and data size.
-	constexpr tes_size_t header_remaining_size = record_header_size - record_type_size - tes_size_of<tes_size_t>();
-	seek_ahead(input, parse_integral<tes_size_t>(input) + header_remaining_size);
 
 	// Iterate over the GRUPs contained in the plugin file.
 	auto grup_record_type = parse_record_type(input);
@@ -160,7 +131,7 @@ std::expected<void, std::string> preparse_file(const fs::path& file_path, plugin
 namespace josk::task
 {
 
-std::expected<plugin_groups_t, std::string> preparse_plugins(const parse_data_t& parse_data)
+std::expected<plugin_groups_t, std::string> parse_plugins(const parse_data_t& parse_data)
 {
 	plugin_groups_t groups{};
 	// Files are read in inverse priority order. Preparsing keeps the latest version of each record.
