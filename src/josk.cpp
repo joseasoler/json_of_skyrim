@@ -11,7 +11,7 @@
 int main(const int argc, char* argv[])
 {
 	CLI::App app{};
-	josk::cli::args arguments{};
+	josk::cli::arguments_t arguments{};
 	josk::cli::configure_cli(app, arguments);
 	CLI11_PARSE(app, argc, argv);
 	if (const auto validation = josk::cli::validate_arguments(arguments); !validation.has_value())
@@ -20,7 +20,7 @@ int main(const int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	auto load_order_data = josk::task::get_load_order(arguments.load_order_path);
+	auto load_order_data = josk::task::parse_load_order(arguments.load_order_path);
 	if (!load_order_data.has_value())
 	{
 		std::println(stderr, "{}", load_order_data.error());

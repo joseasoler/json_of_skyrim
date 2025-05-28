@@ -25,7 +25,7 @@ namespace fs = std::filesystem;
 using namespace josk::task;
 using namespace josk::tes;
 
-void check_add_file(const fs::path& path, plugin_files& files, load_order_data& load_order_data)
+void check_add_file(const fs::path& path, std::vector<plugin_file_t>& files, load_order_t& load_order_data)
 {
 	const auto itr = load_order_data.find(path.filename().string());
 	if (itr == load_order_data.cend() || !fs::is_regular_file(path))
@@ -39,7 +39,7 @@ void check_add_file(const fs::path& path, plugin_files& files, load_order_data& 
 	load_order_data.erase(itr);
 }
 
-std::string report_missing_plugins(const load_order_data& load_order_data)
+std::string report_missing_plugins(const load_order_t& load_order_data)
 {
 	std::size_t missing_plugins_text_size{};
 	std::vector<std::string_view> missing_plugins_names{};
@@ -72,9 +72,9 @@ integral_type parse_integral(std::ifstream& input)
 	return value;
 }
 
-record_type parse_record_type(std::ifstream& input)
+record_type_t parse_record_type(std::ifstream& input)
 {
-	return static_cast<record_type>(parse_integral<std::underlying_type_t<record_type>>(input));
+	return static_cast<record_type_t>(parse_integral<std::underlying_type_t<record_type_t>>(input));
 }
 
 void seek_ahead(std::ifstream& input, const tes_size_t jump_size)
@@ -82,13 +82,13 @@ void seek_ahead(std::ifstream& input, const tes_size_t jump_size)
 	input.seekg(input.tellg() + static_cast<std::ifstream::pos_type>(jump_size));
 }
 
-const std::unordered_set<record_type>& requested_records()
+const std::unordered_set<record_type_t>& requested_records()
 {
-	static const std::unordered_set records{record_type::avif, record_type::perk};
+	static const std::unordered_set records{record_type_t::avif, record_type_t::perk};
 	return records;
 }
 
-std::expected<void, std::string> preparse_record(std::ifstream& input, record_group& group)
+std::expected<void, std::string> preparse_record(std::ifstream& input, record_group_t& group)
 {
 	// Parse required header values and ignore the rest.
 	seek_ahead(input, record_type_size);
@@ -114,7 +114,7 @@ std::expected<void, std::string> preparse_record(std::ifstream& input, record_gr
 	return {};
 }
 
-std::expected<void, std::string> preparse_group(std::ifstream& input, record_groups& groups)
+std::expected<void, std::string> preparse_group(std::ifstream& input, plugin_groups_t& groups)
 {
 	// input has read the GRUP record type. Skip the GRUP header.
 	const auto grup_total_size = parse_integral<tes_size_t>(input);
@@ -136,7 +136,7 @@ std::expected<void, std::string> preparse_group(std::ifstream& input, record_gro
 		input.seekg(input.tellg() - static_cast<std::ifstream::pos_type>(record_type_size));
 
 		const auto group_data_end = input.tellg() + static_cast<std::ifstream::pos_type>(grup_data_size);
-		record_group& group = groups[grup_contained_record_type];
+		record_group_t& group = groups[grup_contained_record_type];
 		while (input.tellg() < group_data_end)
 		{
 			if (auto record_result = preparse_record(input, group); !record_result.has_value())
@@ -154,7 +154,7 @@ std::expected<void, std::string> preparse_group(std::ifstream& input, record_gro
 	return {};
 }
 
-std::expected<void, std::string> preparse_file(const plugin_file& plugin_file, record_groups& groups)
+std::expected<void, std::string> preparse_file(const plugin_file_t& plugin_file, plugin_groups_t& groups)
 {
 	constexpr auto open_flags = static_cast<std::ios_base::openmode>(
 			static_cast<unsigned int>(std::ios::binary) | static_cast<unsigned int>(std::ios::in)
@@ -168,7 +168,7 @@ std::expected<void, std::string> preparse_file(const plugin_file& plugin_file, r
 	}
 
 	// Check and skip TES4 record.
-	if (const auto tes4_record_type = parse_record_type(input); tes4_record_type != record_type::tes4 || !input.good())
+	if (const auto tes4_record_type = parse_record_type(input); tes4_record_type != record_type_t::tes4 || !input.good())
 	{
 		return std::unexpected(std::format("{} is not a TES4 file", file_path.string()));
 	}
@@ -180,7 +180,7 @@ std::expected<void, std::string> preparse_file(const plugin_file& plugin_file, r
 	auto grup_record_type = parse_record_type(input);
 	while (!input.eof())
 	{
-		if (grup_record_type != record_type::grup || !input.good())
+		if (grup_record_type != record_type_t::grup || !input.good())
 		{
 			const auto position = static_cast<std::int64_t>(input.tellg());
 			return std::unexpected(
@@ -205,7 +205,7 @@ std::expected<void, std::string> preparse_file(const plugin_file& plugin_file, r
 namespace josk::task
 {
 
-std::expected<load_order_data, std::string> get_load_order(const fs::path& load_order_path)
+std::expected<load_order_t, std::string> parse_load_order(const fs::path& load_order_path)
 {
 	std::ifstream input(load_order_path, std::ios::in);
 	if (!input.is_open() || !input.good())
@@ -213,8 +213,8 @@ std::expected<load_order_data, std::string> get_load_order(const fs::path& load_
 		return std::unexpected(std::format("Could not load order file {}.", load_order_path.generic_string()));
 	}
 
-	load_order_data data{};
-	load_order_t order{};
+	load_order_t data{};
+	order_t order{};
 	for (std::string line; std::getline(input, line);)
 	{
 		if (line.front() == '#')
@@ -226,11 +226,11 @@ std::expected<load_order_data, std::string> get_load_order(const fs::path& load_
 	return data;
 }
 
-std::expected<plugin_files, std::string> find_plugins(
-		const fs::path& skyrim_data_path, load_order_data& load_order, const fs::path& mods_path
+std::expected<std::vector<plugin_file_t>, std::string> find_plugins(
+		const fs::path& skyrim_data_path, load_order_t& load_order, const fs::path& mods_path
 )
 {
-	plugin_files files{};
+	std::vector<plugin_file_t> files{};
 	for (fs::recursive_directory_iterator itr{mods_path}; itr != fs::recursive_directory_iterator{}; ++itr)
 	{
 		if (itr.depth() > 2U)
@@ -247,7 +247,7 @@ std::expected<plugin_files, std::string> find_plugins(
 	check_add_file(path_skyrim_esm, files, load_order);
 
 	std::ranges::sort(
-			files, [](const plugin_file& lhs, const plugin_file& rhs) { return lhs.load_order > rhs.load_order; }
+			files, [](const plugin_file_t& lhs, const plugin_file_t& rhs) { return lhs.load_order > rhs.load_order; }
 	);
 
 	if (files.size() < load_order.size())
@@ -258,9 +258,9 @@ std::expected<plugin_files, std::string> find_plugins(
 	return files;
 }
 
-std::expected<record_groups, std::string> preparse_and_merge_plugins(const plugin_files& plugins)
+std::expected<plugin_groups_t, std::string> preparse_and_merge_plugins(const std::vector<plugin_file_t>& plugins)
 {
-	record_groups groups{};
+	plugin_groups_t groups{};
 	// Files are read in inverse priority order. Preparsing chooses the latest version of each record.
 	for (const auto& plugin : plugins)
 	{

@@ -10,7 +10,7 @@
 namespace josk::cli
 {
 
-void configure_cli(CLI::App& app, args& arguments)
+void configure_cli(CLI::App& app, arguments_t& arguments)
 {
 	app.name("josk");
 	app.description("JSON of Skyrim - Generate JSON data from a Skyrim modlist.");
@@ -21,7 +21,7 @@ void configure_cli(CLI::App& app, args& arguments)
 	app.add_option("-o,--output", arguments.output_path, "Path to output folder.")->required(true);
 }
 
-std::expected<void, std::string> validate_arguments(const args& arguments)
+std::expected<void, std::string> validate_arguments(const arguments_t& arguments)
 {
 	namespace fs = std::filesystem;
 	if (!fs::exists(arguments.load_order_path))

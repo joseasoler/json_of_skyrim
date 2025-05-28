@@ -10,7 +10,7 @@ class App;
 
 namespace josk::cli
 {
-struct args final
+struct arguments_t final
 {
 	std::string load_order_path;
 	std::string skyrim_data_path;
@@ -18,8 +18,8 @@ struct args final
 	std::string output_path;
 };
 
-void configure_cli(CLI::App& app, args& arguments);
+void configure_cli(CLI::App& app, arguments_t& arguments);
 
-std::expected<void, std::string> validate_arguments(const args& arguments);
+std::expected<void, std::string> validate_arguments(const arguments_t& arguments);
 
 }
