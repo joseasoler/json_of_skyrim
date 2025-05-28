@@ -1,7 +1,10 @@
 add_executable(josk
 		cli.cpp
 		josk.cpp
-		tasks.cpp
+		task_find_plugins.cpp
+		task_initialize_parsing.cpp
+		task_parse_load_order.cpp
+		task_preparse_plugins.cpp
 		${PROJECT_SOURCE_DIR}/josk_application.manifest
 )
 

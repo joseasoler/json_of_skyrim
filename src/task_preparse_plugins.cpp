@@ -1,67 +1,23 @@
 #include <josk/tasks.hpp>
 #include <josk/tes_format.hpp>
 
-#include <algorithm>
 #include <cassert>
 #include <concepts>
-#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <filesystem>
 #include <format>
 #include <fstream>
 #include <ios>
-#include <ranges>
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <unordered_set>
-#include <utility>
-#include <vector>
 
 namespace
 {
 namespace fs = std::filesystem;
 using namespace josk::task;
 using namespace josk::tes;
-
-void check_add_file(const fs::path& path, std::vector<plugin_file_t>& files, load_order_t& load_order_data)
-{
-	const auto itr = load_order_data.find(path.filename().string());
-	if (itr == load_order_data.cend() || !fs::is_regular_file(path))
-	{
-		return;
-	}
-
-	auto& [load_order, path_ref] = files.emplace_back();
-	load_order = itr->second;
-	path_ref = path;
-	load_order_data.erase(itr);
-}
-
-std::string report_missing_plugins(const load_order_t& load_order_data)
-{
-	std::size_t missing_plugins_text_size{};
-	std::vector<std::string_view> missing_plugins_names{};
-	for (const auto& plugin_name : load_order_data | std::views::keys)
-	{
-		missing_plugins_names.emplace_back(plugin_name);
-		// Each plugin will have an EOL character.
-		missing_plugins_text_size += plugin_name.size() + 1U;
-	}
-	std::ranges::sort(missing_plugins_names);
-	constexpr std::string_view error_prefix{"Could not find the following plugins: \n"};
-	std::string report{};
-	report.resize(error_prefix.size() + missing_plugins_text_size);
-	auto report_itr = std::ranges::copy(error_prefix, report.begin()).out;
-	for (const auto& plugin_name : missing_plugins_names)
-	{
-		report_itr = std::ranges::copy(plugin_name, report_itr).out;
-		*report_itr = '\n';
-		++report_itr;
-	}
-	return report;
-}
 
 template <std::integral integral_type>
 integral_type parse_integral(std::ifstream& input)
@@ -154,13 +110,12 @@ std::expected<void, std::string> preparse_group(std::ifstream& input, plugin_gro
 	return {};
 }
 
-std::expected<void, std::string> preparse_file(const plugin_file_t& plugin_file, plugin_groups_t& groups)
+std::expected<void, std::string> preparse_file(const fs::path& file_path, plugin_groups_t& groups)
 {
 	constexpr auto open_flags = static_cast<std::ios_base::openmode>(
 			static_cast<unsigned int>(std::ios::binary) | static_cast<unsigned int>(std::ios::in)
 	);
 
-	const auto& file_path = plugin_file.path;
 	std::ifstream input(file_path, open_flags);
 	if (!input.is_open() || !input.good())
 	{
@@ -205,64 +160,11 @@ std::expected<void, std::string> preparse_file(const plugin_file_t& plugin_file,
 namespace josk::task
 {
 
-std::expected<load_order_t, std::string> parse_load_order(const fs::path& load_order_path)
-{
-	std::ifstream input(load_order_path, std::ios::in);
-	if (!input.is_open() || !input.good())
-	{
-		return std::unexpected(std::format("Could not load order file {}.", load_order_path.generic_string()));
-	}
-
-	load_order_t data{};
-	order_t order{};
-	for (std::string line; std::getline(input, line);)
-	{
-		if (line.front() == '#')
-		{
-			continue;
-		}
-		data[std::move(line)] = ++order;
-	}
-	return data;
-}
-
-std::expected<std::vector<plugin_file_t>, std::string> find_plugins(
-		const fs::path& skyrim_data_path, load_order_t& load_order, const fs::path& mods_path
-)
-{
-	std::vector<plugin_file_t> files{};
-	for (fs::recursive_directory_iterator itr{mods_path}; itr != fs::recursive_directory_iterator{}; ++itr)
-	{
-		if (itr.depth() > 2U)
-		{
-			itr.disable_recursion_pending();
-		}
-		if (!fs::is_directory(itr->path()))
-		{
-			check_add_file(itr->path(), files, load_order);
-		}
-	}
-
-	const auto path_skyrim_esm = fs::path{skyrim_data_path} / "Skyrim.esm";
-	check_add_file(path_skyrim_esm, files, load_order);
-
-	std::ranges::sort(
-			files, [](const plugin_file_t& lhs, const plugin_file_t& rhs) { return lhs.load_order > rhs.load_order; }
-	);
-
-	if (files.size() < load_order.size())
-	{
-		return std::unexpected(report_missing_plugins(load_order));
-	}
-
-	return files;
-}
-
-std::expected<plugin_groups_t, std::string> preparse_and_merge_plugins(const std::vector<plugin_file_t>& plugins)
+std::expected<plugin_groups_t, std::string> preparse_plugins(const parse_data_t& parse_data)
 {
 	plugin_groups_t groups{};
-	// Files are read in inverse priority order. Preparsing chooses the latest version of each record.
-	for (const auto& plugin : plugins)
+	// Files are read in inverse priority order. Preparsing keeps the latest version of each record.
+	for (const auto& plugin : parse_data.plugins)
 	{
 		if (auto result = preparse_file(plugin, groups); !result.has_value())
 		{

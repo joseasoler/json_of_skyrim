@@ -1,5 +1,6 @@
 #pragma once
 
+#include <josk/cli.hpp>
 #include <josk/tes_format.hpp>
 
 #include <cstdint>
@@ -15,22 +16,24 @@ namespace josk::task
 using order_t = std::int32_t;
 constexpr order_t invalid_order{-1};
 
-/** Maps each plugin name to its priority. */
 using load_order_t = std::unordered_map<std::string, order_t>;
 
-/** Parse the file detailing the load order of all plugins. */
-std::expected<load_order_t, std::string> parse_load_order(const std::filesystem::path& load_order_path);
-
-struct plugin_file_t
+struct parse_data_t final
 {
-	order_t load_order;
-	std::filesystem::path path;
+	cli::arguments_t arguments;
+	/** Maps each plugin name to its priority. */
+	load_order_t load_order;
+	/** List of plugin files to be loaded, sorted by inverse load order. */
+	std::vector<std::filesystem::path> plugins;
 };
 
+std::expected<parse_data_t, std::string> initialize_parsing(cli::arguments_t arguments);
+
+/** Parse the file detailing the load order of all plugins. */
+std::expected<parse_data_t, std::string> parse_load_order(parse_data_t parse_data);
+
 /** List of plugin files to be loaded, sorted by inverse load order. */
-std::expected<std::vector<plugin_file_t>, std::string> find_plugins(
-		const std::filesystem::path& skyrim_data_path, load_order_t& load_order, const std::filesystem::path& mods_path
-);
+std::expected<parse_data_t, std::string> find_plugins(parse_data_t parse_data);
 
 /** Maps the formid of each unparsed record to its unparsed data field. */
 using record_group_t = std::unordered_map<tes::formid_t, std::vector<char>>;
@@ -39,6 +42,6 @@ using record_group_t = std::unordered_map<tes::formid_t, std::vector<char>>;
 using plugin_groups_t = std::unordered_map<tes::record_type_t, record_group_t>;
 
 /** Loads plugin files, preparses its records, and merges them with other files. */
-std::expected<plugin_groups_t, std::string> preparse_and_merge_plugins(const std::vector<plugin_file_t>& plugins);
+std::expected<plugin_groups_t, std::string> preparse_plugins(const parse_data_t& parse_data);
 
 }

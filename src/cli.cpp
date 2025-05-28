@@ -21,7 +21,7 @@ void configure_cli(CLI::App& app, arguments_t& arguments)
 	app.add_option("-o,--output", arguments.output_path, "Path to output folder.")->required(true);
 }
 
-std::expected<void, std::string> validate_arguments(const arguments_t& arguments)
+std::expected<arguments_t, std::string> validate_arguments(arguments_t arguments)
 {
 	namespace fs = std::filesystem;
 	if (!fs::exists(arguments.load_order_path))
@@ -62,7 +62,7 @@ std::expected<void, std::string> validate_arguments(const arguments_t& arguments
 		return std::unexpected(std::format("Output {} is not a directory.", arguments.output_path.string()));
 	}
 
-	return {};
+	return arguments;
 }
 
 }

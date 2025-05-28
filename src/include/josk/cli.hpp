@@ -21,6 +21,6 @@ struct arguments_t final
 
 void configure_cli(CLI::App& app, arguments_t& arguments);
 
-std::expected<void, std::string> validate_arguments(const arguments_t& arguments);
+std::expected<arguments_t, std::string> validate_arguments(arguments_t arguments);
 
 }
