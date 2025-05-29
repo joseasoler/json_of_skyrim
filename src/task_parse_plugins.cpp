@@ -5,20 +5,20 @@
 #include <cassert>
 #include <cstdint>
 #include <expected>
-#include <filesystem>
 #include <format>
 #include <fstream>
 #include <ios>
+#include <ranges>
 #include <string>
 #include <unordered_set>
+#include <vector>
 
 namespace
 {
-namespace fs = std::filesystem;
 using namespace josk::task;
 using namespace josk::tes;
 
-std::expected<void, std::string> preparse_record(std::ifstream& input, record_group_t& group)
+std::expected<void, std::string> parse_record(std::ifstream& input, record_group_t& group)
 {
 	// Parse required header values and ignore the rest.
 	seek_ahead(input, record_type_size);
@@ -44,7 +44,7 @@ std::expected<void, std::string> preparse_record(std::ifstream& input, record_gr
 	return {};
 }
 
-std::expected<void, std::string> preparse_group(std::ifstream& input, plugin_groups_t& groups)
+std::expected<void, std::string> parse_group(std::ifstream& input, plugin_groups_t& groups)
 {
 	// input has read the GRUP record type. Skip the GRUP header.
 	const auto grup_total_size = parse_integral<tes_size_t>(input);
@@ -69,7 +69,7 @@ std::expected<void, std::string> preparse_group(std::ifstream& input, plugin_gro
 		record_group_t& group = groups[grup_contained_record_type];
 		while (input.tellg() < group_data_end)
 		{
-			if (auto record_result = preparse_record(input, group); !record_result.has_value())
+			if (auto record_result = parse_record(input, group); !record_result.has_value())
 			{
 				return std::unexpected(record_result.error());
 			}
@@ -84,22 +84,22 @@ std::expected<void, std::string> preparse_group(std::ifstream& input, plugin_gro
 	return {};
 }
 
-std::expected<void, std::string> preparse_file(const fs::path& file_path, plugin_groups_t& groups)
+std::expected<void, std::string> parse_plugin(const plugin_t& plugin, plugin_groups_t& groups)
 {
 	constexpr auto open_flags = static_cast<std::ios_base::openmode>(
 			static_cast<unsigned int>(std::ios::binary) | static_cast<unsigned int>(std::ios::in)
 	);
 
-	std::ifstream input(file_path, open_flags);
+	std::ifstream input(plugin.path, open_flags);
 	if (!input.is_open() || !input.good())
 	{
-		return std::unexpected(std::format("Could not open file {}.", file_path.string()));
+		return std::unexpected(std::format("Could not open file {}.", plugin.filename));
 	}
 
 	// Check and skip TES4 record.
 	if (const auto tes4_result = parse_tes4_record(input); !tes4_result.has_value())
 	{
-		return std::unexpected(std::format("{}: {}", file_path.string(), tes4_result.error()));
+		return std::unexpected(std::format("{}: {}", plugin.filename, tes4_result.error()));
 	}
 
 	// Iterate over the GRUPs contained in the plugin file.
@@ -110,13 +110,13 @@ std::expected<void, std::string> preparse_file(const fs::path& file_path, plugin
 		{
 			const auto position = static_cast<std::int64_t>(input.tellg());
 			return std::unexpected(
-					std::format("Error during GRUP processing at position {} of file {}.", position, file_path.string())
+					std::format("Error during GRUP processing at position {} of file {}.", position, plugin.filename)
 			);
 		}
 
-		if (auto preparse_group_result = preparse_group(input, groups); !preparse_group_result.has_value())
+		if (auto parse_group_result = parse_group(input, groups); !parse_group_result.has_value())
 		{
-			return std::unexpected(preparse_group_result.error());
+			return std::unexpected(parse_group_result.error());
 		}
 
 		// Read the grup id of the next iteration.
@@ -131,13 +131,14 @@ std::expected<void, std::string> preparse_file(const fs::path& file_path, plugin
 namespace josk::task
 {
 
-std::expected<plugin_groups_t, std::string> parse_plugins(const parse_data_t& parse_data)
+std::expected<plugin_groups_t, std::string> parse_plugins(const std::vector<plugin_t>& plugins)
 {
 	plugin_groups_t groups{};
-	// Files are read in inverse priority order. Preparsing keeps the latest version of each record.
-	for (const auto& plugin : parse_data.plugins)
+
+	// Files are read in inverse priority order. When an existing formid is found on a later file, it can be ignored.
+	for (const auto& plugin : plugins | std::views::reverse)
 	{
-		if (auto result = preparse_file(plugin, groups); !result.has_value())
+		if (auto result = parse_plugin(plugin, groups); !result.has_value())
 		{
 			return std::unexpected(result.error());
 		}

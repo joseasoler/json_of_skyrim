@@ -1,3 +1,4 @@
+#include <josk/cli.hpp>
 #include <josk/tasks.hpp>
 
 #include <expected>
@@ -10,18 +11,20 @@
 namespace josk::task
 {
 
-std::expected<parse_data_t, std::string> parse_load_order(parse_data_t parse_data)
+std::expected<plugins_to_load_t, std::string> parse_load_order(cli::arguments_t arguments)
 {
-	auto& load_order_path = parse_data.arguments.load_order_path;
+	const auto& load_order_path = arguments.load_order_path;
 	std::ifstream input(load_order_path, std::ios::in);
-	load_order_path.clear();
-
 	if (!input.is_open() || !input.good())
 	{
 		return std::unexpected(std::format("Could not load order file {}.", load_order_path.generic_string()));
 	}
 
-	auto& load_order = parse_data.load_order;
+	plugins_to_load_t plugins_to_load;
+	plugins_to_load.skyrim_data_path = std::move(arguments.skyrim_data_path);
+	plugins_to_load.mods_path = std::move(arguments.mods_path);
+
+	auto& load_order = plugins_to_load.load_order;
 	order_t order{};
 	for (std::string line; std::getline(input, line);)
 	{
@@ -32,7 +35,7 @@ std::expected<parse_data_t, std::string> parse_load_order(parse_data_t parse_dat
 		load_order[std::move(line)] = ++order;
 	}
 
-	return parse_data;
+	return plugins_to_load;
 }
 
 }

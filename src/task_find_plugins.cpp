@@ -7,6 +7,7 @@
 #include <ranges>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -16,32 +17,37 @@ namespace
 namespace fs = std::filesystem;
 using namespace josk::task;
 
-struct plugin_file_t
+void try_add_plugin(
+		const fs::path& filesystem_path, std::vector<plugin_t>& files, std::unordered_map<std::string, order_t>& load_order
+)
 {
-	order_t load_order{};
-	std::filesystem::path path;
-	auto operator<=>(const plugin_file_t&) const = default;
-};
-
-void check_add_file(fs::path path, std::vector<plugin_file_t>& files, load_order_t& load_order_data)
-{
-	const auto itr = load_order_data.find(path.filename().string());
-	if (itr == load_order_data.cend() || !fs::is_regular_file(path))
+	if (!fs::is_regular_file(filesystem_path))
 	{
+		// Modlist TES files are expected to be regular files.
 		return;
 	}
 
-	auto& [load_order, path_ref] = files.emplace_back();
-	load_order = itr->second;
-	path_ref = std::move(path);
-	load_order_data.erase(itr);
+	auto filename_to_test = filesystem_path.filename().string();
+	const auto itr = load_order.find(filename_to_test);
+	if (itr == load_order.cend())
+	{
+		// The plugin filename must be contained in the list of remaining plugins to find.
+		return;
+	}
+
+	auto& [plugin_order, plugin_filename, plugin_path] = files.emplace_back();
+	plugin_order = itr->second;
+	plugin_filename = std::move(filename_to_test);
+	plugin_path = filesystem_path;
+	// Remove the found plugin from the remaining load order.
+	load_order.erase(itr);
 }
 
-std::string report_missing_plugins(const load_order_t& load_order_data)
+std::string report_missing_plugins(const std::unordered_map<std::string, order_t>& load_order)
 {
 	std::size_t missing_plugins_text_size{};
 	std::vector<std::string_view> missing_plugins_names{};
-	for (const auto& plugin_name : load_order_data | std::views::keys)
+	for (const auto& plugin_name : load_order | std::views::keys)
 	{
 		missing_plugins_names.emplace_back(plugin_name);
 		// Each plugin will have an EOL character.
@@ -67,12 +73,11 @@ std::string report_missing_plugins(const load_order_t& load_order_data)
 namespace josk::task
 {
 
-std::expected<parse_data_t, std::string> find_plugins(parse_data_t parse_data)
+std::expected<std::vector<plugin_t>, std::string> find_plugins(plugins_to_load_t modlist)
 {
-	std::vector<plugin_file_t> files;
-	auto& load_order = parse_data.load_order;
-	for (fs::recursive_directory_iterator itr{parse_data.arguments.mods_path}; itr != fs::recursive_directory_iterator{};
-			 ++itr)
+	std::vector<plugin_t> files;
+	auto& load_order = modlist.load_order;
+	for (fs::recursive_directory_iterator itr{modlist.mods_path}; itr != fs::recursive_directory_iterator{}; ++itr)
 	{
 		if (itr.depth() > 2U)
 		{
@@ -80,28 +85,22 @@ std::expected<parse_data_t, std::string> find_plugins(parse_data_t parse_data)
 		}
 		if (!fs::is_directory(itr->path()))
 		{
-			check_add_file(itr->path(), files, load_order);
+			try_add_plugin(itr->path(), files, load_order);
 		}
 	}
-	parse_data.arguments.mods_path.clear();
 
 	// ToDo check all files in this folder.
-	const auto path_skyrim_esm = fs::path{parse_data.arguments.skyrim_data_path} / "Skyrim.esm";
-	check_add_file(path_skyrim_esm, files, load_order);
-	parse_data.arguments.skyrim_data_path.clear();
+	const auto path_skyrim_esm = fs::path{modlist.skyrim_data_path} / "Skyrim.esm";
+	try_add_plugin(path_skyrim_esm, files, load_order);
 
-	if (files.size() < load_order.size())
+	if (!load_order.empty())
 	{
 		return std::unexpected(report_missing_plugins(load_order));
 	}
 
 	std::ranges::sort(files);
-	for (auto& [_, path] : files)
-	{
-		parse_data.plugins.emplace_back(std::move(path));
-	}
 
-	return parse_data;
+	return files;
 }
 
 }

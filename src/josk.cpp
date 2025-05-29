@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <expected>
 #include <print>
+#include <utility>
 
 int main(const int argc, char* argv[])
 {
@@ -15,8 +16,7 @@ int main(const int argc, char* argv[])
 	josk::cli::configure_cli(app, arguments);
 	CLI11_PARSE(app, argc, argv);
 
-	const auto tasks_result = josk::cli::validate_arguments(arguments)
-																.and_then(josk::task::initialize_parsing)
+	const auto tasks_result = josk::cli::validate_arguments(std::move(arguments))
 																.and_then(josk::task::parse_load_order)
 																.and_then(josk::task::find_plugins)
 																.and_then(josk::task::parse_plugins);

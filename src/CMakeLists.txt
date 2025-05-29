@@ -2,7 +2,6 @@ add_executable(josk
 		cli.cpp
 		josk.cpp
 		task_find_plugins.cpp
-		task_initialize_parsing.cpp
 		task_parse_load_order.cpp
 		task_parse_plugins.cpp
 		tes_parse.cpp

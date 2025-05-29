@@ -16,24 +16,27 @@ namespace josk::task
 using order_t = std::int32_t;
 constexpr order_t invalid_order{-1};
 
-using load_order_t = std::unordered_map<std::string, order_t>;
-
-struct parse_data_t final
+struct plugin_t final
 {
-	cli::arguments_t arguments;
-	/** Maps each plugin name to its priority. */
-	load_order_t load_order;
-	/** List of plugin files to be loaded, sorted by inverse load order. */
-	std::vector<std::filesystem::path> plugins;
+	order_t order;
+	std::string filename;
+	std::filesystem::path path;
+	auto operator<=>(const plugin_t&) const = default;
 };
 
-std::expected<parse_data_t, std::string> initialize_parsing(cli::arguments_t arguments);
+struct plugins_to_load_t final
+{
+	std::filesystem::path skyrim_data_path;
+	std::filesystem::path mods_path;
+	/** Maps each plugin name to its priority. */
+	std::unordered_map<std::string, order_t> load_order;
+};
 
-/** Parse the file detailing the load order of all plugins. */
-std::expected<parse_data_t, std::string> parse_load_order(parse_data_t parse_data);
+/** Parse the file detailing plugin load order. */
+std::expected<plugins_to_load_t, std::string> parse_load_order(cli::arguments_t arguments);
 
 /** List of plugin files to be loaded, sorted by inverse load order. */
-std::expected<parse_data_t, std::string> find_plugins(parse_data_t parse_data);
+std::expected<std::vector<plugin_t>, std::string> find_plugins(plugins_to_load_t modlist);
 
 /** Maps the formid of each unparsed record to its unparsed data field. */
 using record_group_t = std::unordered_map<tes::formid_t, std::vector<char>>;
@@ -42,6 +45,6 @@ using record_group_t = std::unordered_map<tes::formid_t, std::vector<char>>;
 using plugin_groups_t = std::unordered_map<tes::record_type_t, record_group_t>;
 
 /** Loads plugin files, parses its records, and merges them with other files. */
-std::expected<plugin_groups_t, std::string> parse_plugins(const parse_data_t& parse_data);
+std::expected<plugin_groups_t, std::string> parse_plugins(const std::vector<plugin_t>& plugins);
 
 }
