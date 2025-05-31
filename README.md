@@ -1,14 +1,14 @@
-# JSON of Skyrim (josk)
+# josk
 
 [![License: GPLv3](https://img.shields.io/badge/License-GPLv3-brightgreen.svg)](https://opensource.org/license/gpl-3-0)
 
-Generate JSON data from a Skyrim modlist.
+Generate true JSONs of Skyrim data.
 
 On Windows platforms, Windows 10 Version 1903 (May 2019 Update) or newer is required.
 
 ## Contributing
 
-josk encourages community involvement and contributions, check [CONTRIBUTING.md](CONTRIBUTING.md) for details. Contributors can be found in the [contributors list](https://github.com/joseasoler/json_of_skyrim/graphs/contributors).
+josk encourages community involvement and contributions, check [CONTRIBUTING.md](CONTRIBUTING.md) for details. Contributors can be found in the [contributors list](https://github.com/joseasoler/josk/graphs/contributors).
 
 ## License
 

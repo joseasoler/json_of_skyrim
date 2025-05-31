@@ -21,7 +21,7 @@ std::expected<plugins_to_load_t, std::string> parse_load_order(cli::arguments_t 
 	}
 
 	plugins_to_load_t plugins_to_load;
-	plugins_to_load.skyrim_data_path = std::move(arguments.skyrim_data_path);
+	plugins_to_load.data_path = std::move(arguments.data_path);
 	plugins_to_load.mods_path = std::move(arguments.mods_path);
 
 	auto& load_order = plugins_to_load.load_order;

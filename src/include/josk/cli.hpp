@@ -14,7 +14,7 @@ namespace josk::cli
 struct arguments_t final
 {
 	std::filesystem::path load_order_path;
-	std::filesystem::path skyrim_data_path;
+	std::filesystem::path data_path;
 	std::filesystem::path mods_path;
 	std::filesystem::path output_path;
 };

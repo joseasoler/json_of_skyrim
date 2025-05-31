@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 4.0)
 
-project(json_of_skyrim
+project(josk
 	VERSION 0.1.0
 	DESCRIPTION "Generate JSON data from a Skyrim modlist."
-	HOMEPAGE_URL "https://github.com/joseasoler/json_of_skyrim"
+	HOMEPAGE_URL "https://github.com/joseasoler/josk"
 	LANGUAGES C CXX
 )
 

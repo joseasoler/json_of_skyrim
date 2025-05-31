@@ -90,7 +90,7 @@ std::expected<std::vector<plugin_t>, std::string> find_plugins(plugins_to_load_t
 	}
 
 	// ToDo check all files in this folder.
-	const auto path_skyrim_esm = fs::path{modlist.skyrim_data_path} / "Skyrim.esm";
+	const auto path_skyrim_esm = fs::path{modlist.data_path} / "Skyrim.esm";
 	try_add_plugin(path_skyrim_esm, files, load_order);
 
 	if (!load_order.empty())

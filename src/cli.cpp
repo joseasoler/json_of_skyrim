@@ -13,10 +13,10 @@ namespace josk::cli
 void configure_cli(CLI::App& app, arguments_t& arguments)
 {
 	app.name("josk");
-	app.description("JSON of Skyrim - Generate JSON data from a Skyrim modlist.");
+	app.description("Generate JSON data from a Skyrim modlist.");
 
 	app.add_option("-l,--loadorder", arguments.load_order_path, "Path to loadorder.txt.")->required(true);
-	app.add_option("-d,--data", arguments.skyrim_data_path, "Path to Skyrim\\Data folder.")->required(true);
+	app.add_option("-d,--data", arguments.data_path, "Path to Data folder.")->required(true);
 	app.add_option("-m,--mods", arguments.mods_path, "Path to mods folder.")->required(true);
 	app.add_option("-o,--output", arguments.output_path, "Path to output folder.")->required(true);
 }
@@ -35,13 +35,13 @@ std::expected<arguments_t, std::string> validate_arguments(arguments_t arguments
 		);
 	}
 
-	if (!fs::exists(arguments.skyrim_data_path))
+	if (!fs::exists(arguments.data_path))
 	{
-		return std::unexpected(std::format("Skyrim data path {} does not exist.", arguments.skyrim_data_path.string()));
+		return std::unexpected(std::format("Data path {} does not exist.", arguments.data_path.string()));
 	}
-	if (!fs::is_directory(arguments.skyrim_data_path))
+	if (!fs::is_directory(arguments.data_path))
 	{
-		return std::unexpected(std::format("Skyrim path {} is not a directory.", arguments.skyrim_data_path.string()));
+		return std::unexpected(std::format("Dath {} is not a directory.", arguments.data_path.string()));
 	}
 
 	if (!fs::exists(arguments.mods_path))
