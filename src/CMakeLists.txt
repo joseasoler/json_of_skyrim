@@ -18,6 +18,7 @@ target_compile_options(josk PRIVATE ${JOSK_CXX_COMPILE_OPTIONS})
 
 target_link_libraries(josk PRIVATE
 		CLI11::CLI11
+		strong_type::strong_type
 )
 
 if (JOSK_CLANG_FORMAT_BINARY)

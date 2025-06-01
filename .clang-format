@@ -117,6 +117,8 @@ IncludeCategories:
     Priority: 100
   - Regex: '^<CLI/.*'
     Priority: 200
+  - Regex: '^<strong_type/.*'
+    Priority: 200
   - Regex: '^<.*'
     Priority: 400
   - Regex: '.*'

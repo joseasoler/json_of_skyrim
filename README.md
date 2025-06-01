@@ -31,6 +31,8 @@ The following dependencies must be available through the `find_package` CMake fe
 
 * **[CLI11](https://github.com/CLIUtils/CLI11)**: Command line parser for C++11.
 
+* **[strong_type](https://github.com/rollbear/strong_type)**: Additive strong typedef library for C++.
+
 ### vcpkg support
 
 Dependencies can optionally be retrieved and built using [vcpkg](https://github.com/microsoft/vcpkg). This is disabled by default, but it is enabled in the provided CMake presets.

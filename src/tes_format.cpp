@@ -10,18 +10,6 @@ namespace
 {
 using namespace josk::tes;
 
-constexpr std::array<std::string_view, 121Z> record_type_str{
-		"AACT", "ACHR", "ACTI", "ADDN", "ALCH", "AMMO", "ANIO", "APPA", "ARMA", "ARMO", "ARTO", "ASPC", "ASTP", "AVIF",
-		"BOOK", "BPTD", "CAMS", "CELL", "CLAS", "CLFM", "CLMT", "COBJ", "COLL", "CONT", "CPTH", "CSTY", "DEBR", "DIAL",
-		"DLBR", "DLVW", "DOBJ", "DOOR", "DUAL", "ECZN", "EFSH", "ENCH", "EQUP", "EXPL", "EYES", "FACT", "FLOR", "FLST",
-		"FSTP", "FSTS", "FURN", "GLOB", "GMST", "GRAS", "GRUP", "HAZD", "HDPT", "IDLE", "IDLM", "IMAD", "IMGS", "INFO",
-		"INGR", "IPCT", "IPDS", "KEYM", "KYWD", "LAND", "LCRT", "LCTN", "LGTM", "LIGH", "LSCR", "LTEX", "LVLI", "LVLN",
-		"LVSP", "MATO", "MATT", "MESG", "MGEF", "MISC", "MOVT", "MSTT", "MUSC", "MUST", "NAVI", "NAVM", "NOTE", "NPC_",
-		"OTFT", "PACK", "PERK", "PGRE", "PHZD", "PROJ", "QUST", "RACE", "REFR", "REGN", "RELA", "REVB", "RFCT", "SCEN",
-		"SCRL", "SHOU", "SLGM", "SMBN", "SMEN", "SMQN", "SNCT", "SNDR", "SOPM", "SOUN", "SPEL", "SPGD", "STAT", "TACT",
-		"TES4", "TREE", "TXST", "VTYP", "WATR", "WEAP", "WOOP", "WRLD", "WTHR",
-};
-
 }
 
 namespace josk::tes
@@ -29,7 +17,7 @@ namespace josk::tes
 
 record_type_t to_record_type(const std::string_view record_type_string) noexcept
 {
-	if (record_type_string.size() != static_cast<std::size_t>(record_type_size))
+	if (record_type_string.size() != section_id_byte_size)
 	{
 		return record_type_t::none;
 	}
@@ -43,17 +31,6 @@ record_type_t to_record_type(const std::string_view record_type_string) noexcept
 	return static_cast<record_type_t>(std::distance(record_type_str.cbegin(), itr));
 }
 
-std::string_view to_record_string(record_type_t record_type) noexcept
-{
-	const auto record_type_index = static_cast<std::size_t>(record_type);
-	if (record_type_index >= static_cast<std::size_t>(record_type_t::none))
-	{
-		return "NONE";
-	}
-
-	return record_type_str[record_type_index];
-}
-
 }
 
 namespace
@@ -63,8 +40,7 @@ namespace
 static_assert(record_type_str.size() == static_cast<std::size_t>(record_type_t::none));
 static_assert(std::ranges::is_sorted(record_type_str));
 static_assert(std::ranges::all_of(
-		record_type_str,
-		[](const std::string_view view) { return view.size() == static_cast<std::size_t>(record_type_size); }
+		record_type_str, [](const std::string_view view) { return view.size() == section_id_byte_size; }
 ));
 
 static_assert(record_type_str[static_cast<std::size_t>(record_type_t::aact)] == "AACT");

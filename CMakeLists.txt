@@ -28,6 +28,7 @@ include(cmake/clang_tidy.cmake)
 
 # Dependencies.
 find_package(CLI11 CONFIG REQUIRED)
+find_package(strong_type CONFIG REQUIRED)
 
 # Source code.
 add_subdirectory(src)
