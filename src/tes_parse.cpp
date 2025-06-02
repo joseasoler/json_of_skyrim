@@ -136,14 +136,22 @@ public:
 	/** Held parser state memory will be automatically freed unless release is called. */
 	~parser_impl() = default;
 
+	enum class parser_status_t : std::uint8_t
+	{
+		valid = 0U,
+		uninitialized,
+		error,
+		eof,
+	};
+
+	[[nodiscard]] parser_status_t get_status();
+
 	/**
 	 * Generates an error message for the current state. Cannot be const as querying stream position can modify it.
 	 * @param description Short description of the error. Must start with lowercase and not end with a period.
 	 * @return Formatted error message.
 	 */
 	[[nodiscard]] std::string error_message(std::string_view description);
-
-	[[nodiscard]] bool is_at_end_of_file() const;
 
 	/**
 	 * Releases the internal parser state from RAII management. Intended to pass the state to the next task.
@@ -193,28 +201,46 @@ parser_impl::parser_impl(parser_state* state)
 {
 }
 
+[[nodiscard]] parser_impl::parser_status_t parser_impl::get_status()
+{
+	if (_state->records == nullptr)
+	{
+		return parser_status_t::uninitialized;
+	}
+	const auto& input = _state->input;
+	if (input.eof())
+	{
+		return parser_status_t::eof;
+	}
+	if (input.good())
+	{
+		return parser_status_t::valid;
+	}
+	return parser_status_t::error;
+}
+
 std::string parser_impl::error_message(const std::string_view description)
 {
 	std::string_view stream_status{"error"};
-	pos_t position{invalid_pos};
-	auto& input = _state->input;
-	if (_state->records == nullptr)
+	pos_t position{};
+	switch (get_status())
 	{
-		stream_status = "uninitialized";
-	}
-	else
-	{
-		// tellg is non-const and may change the state of the stream. It is called first so the latest state is reported.
-		position = static_cast<pos_t>(input.tellg());
-		if (input.eof())
-		{
+		case parser_status_t::valid:
+			stream_status = "valid";
+			position = current_position();
+			break;
+		case parser_status_t::uninitialized:
+			stream_status = "uninitialized";
+			position = invalid_pos;
+			break;
+		case parser_status_t::error:
+			stream_status = "valid";
+			position = current_position();
+			break;
+		case parser_status_t::eof:
 			stream_status = "end of file";
 			position = max_pos;
-		}
-		else if (input.good())
-		{
-			stream_status = "valid";
-		}
+			break;
 	}
 
 	constexpr auto* format_str = "Parse error in {}: {}. State: {}, position: 0x{:x}.";
@@ -223,15 +249,14 @@ std::string parser_impl::error_message(const std::string_view description)
 
 std::expected<group_data_t, std::string> parser_impl::next_group()
 {
-	const auto& input = _state->input;
-	if (!input.good())
+	if (get_status() != parser_status_t::valid)
 	{
 		return std::unexpected(error_message("invalid file stream state before opening next record group"));
 	}
 
 	if (!validate_record_id(record_type_t::grup))
 	{
-		if (input.eof())
+		if (get_status() == parser_status_t::eof)
 		{
 			return invalid_group_data;
 		}
@@ -270,8 +295,7 @@ std::expected<group_data_t, std::string> parser_impl::next_group()
 std::expected<void, std::string> parser_impl::parse_group(const group_data_t group_data)
 {
 	const auto& [contained_record_type, group_data_size] = group_data;
-	auto& input = _state->input;
-	if (!input.good())
+	if (get_status() != parser_status_t::valid)
 	{
 		const auto formatted_error = std::format(
 				"invalid file stream state while parsing {} record group", josk::tes::to_record_string(contained_record_type)
@@ -373,11 +397,6 @@ parser_impl::record_parse_func parser_impl::get_record_parse_func(const record_t
 	return nullptr;
 }
 
-bool parser_impl::is_at_end_of_file() const
-{
-	return _state->input.eof();
-}
-
 parser_impl::parser_state* parser_impl::release()
 {
 	return _state.release();
@@ -445,7 +464,7 @@ std::expected<parser_impl, std::string> acquire_state(josk::tes::parser* parser_
  * @return Parser, or an error.
  */
 std::expected<parser_impl, std::string> open(
-		const std::filesystem::path& path, std::string_view name, parser_impl::records& records
+		const std::filesystem::path& path, const std::string_view name, parser_impl::records& records
 )
 {
 	auto parser_ptr = std::make_unique<josk::tes::parser>();
@@ -455,11 +474,9 @@ std::expected<parser_impl, std::string> open(
 	constexpr auto open_flags = static_cast<std::ios_base::openmode>(
 			static_cast<unsigned int>(std::ios::binary) | static_cast<unsigned int>(std::ios::in)
 	);
-	auto& input = parser_ptr->input;
-	input.open(path, open_flags);
-	const bool input_open_error = !input.good() || !input.is_open();
+	parser_ptr->input.open(path, open_flags);
 	parser_impl parser{parser_ptr.release()};
-	if (input_open_error)
+	if (parser.get_status() != parser_impl::parser_status_t::valid)
 	{
 		return std::unexpected(parser.error_message("could not open file"));
 	}
@@ -502,7 +519,7 @@ std::expected<parser_impl, std::string> parse(parser_impl impl)
 
 std::expected<void, std::string> close(parser_impl impl)
 {
-	if (!impl.is_at_end_of_file())
+	if (impl.get_status() != parser_impl::parser_status_t::eof)
 	{
 		return std::unexpected(impl.error_message("closing file that did not finish parsing"));
 	}
