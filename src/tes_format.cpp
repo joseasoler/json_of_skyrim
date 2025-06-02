@@ -6,12 +6,6 @@
 #include <iterator>
 #include <string_view>
 
-namespace
-{
-using namespace josk::tes;
-
-}
-
 namespace josk::tes
 {
 
@@ -35,6 +29,7 @@ record_type_t to_record_type(const std::string_view record_type_string) noexcept
 
 namespace
 {
+using namespace josk::tes;
 
 // record_type_str maps each valid record_type enum value with its TES char representation.
 static_assert(record_type_str.size() == static_cast<std::size_t>(record_type_t::none));
@@ -164,5 +159,17 @@ static_assert(record_type_str[static_cast<std::size_t>(record_type_t::weap)] == 
 static_assert(record_type_str[static_cast<std::size_t>(record_type_t::woop)] == "WOOP");
 static_assert(record_type_str[static_cast<std::size_t>(record_type_t::wrld)] == "WRLD");
 static_assert(record_type_str[static_cast<std::size_t>(record_type_t::wthr)] == "WTHR");
+
+// field_type_str maps each valid field_type enum value with its TES char representation.
+static_assert(field_type_str.size() == static_cast<std::size_t>(field_type_t::none));
+static_assert(std::ranges::is_sorted(field_type_str));
+static_assert(
+		std::ranges::all_of(field_type_str, [](const std::string_view view) { return view.size() == section_id_byte_size; })
+);
+
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::cnam)] == "CNAM");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::desc)] == "DESC");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::edid)] == "EDID");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::full)] == "FULL");
 
 }

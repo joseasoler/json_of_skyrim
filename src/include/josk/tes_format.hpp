@@ -49,14 +49,14 @@ constexpr std::array<std::string_view, 121Z> record_type_str{
  * @param record_type_string Must have a size of 4Z.
  * @return none if any error occurred, record_type otherwise.
  */
-record_type_t to_record_type(std::string_view record_type_string) noexcept;
+[[nodiscard]] record_type_t to_record_type(std::string_view record_type_string) noexcept;
 
 /**
  * Returns the string representation of a record type.
  * @param record_type Type to check.
  * @return String representation if record_type is valid, NONE otherwise.
  */
-constexpr std::string_view to_record_string(record_type_t record_type) noexcept
+[[nodiscard]] constexpr std::string_view to_record_string(record_type_t record_type) noexcept
 {
 	const auto record_type_index = static_cast<std::size_t>(record_type);
 	if (record_type_index >= record_type_str.size())
@@ -73,11 +73,50 @@ constexpr std::size_t section_id_byte_size = 4Z;
 /** Form (or record) identifiers are unique identifiers for individual records. */
 using formid_t = std::uint32_t;
 
+/** Parsed field types are represented as a single byte. */
+enum class field_type_t : std::uint8_t
+{
+	anam,
+	cnam,
+	desc,
+	edid,
+	full,
+	none
+};
+
+/** String representations of field types, as they appear in TES files. Indexed by their field_type_t. */
+constexpr std::array<std::string_view, 5Z> field_type_str{"ANAM", "CNAM", "DESC", "EDID", "FULL"};
+
+/**
+ * Returns the string representation of a field type.
+ * @param field_type Type to check.
+ * @return String representation if field_type is valid, NONE otherwise.
+ */
+[[nodiscard]] constexpr std::string_view to_field_string(field_type_t field_type) noexcept
+{
+	const auto field_type_index = static_cast<std::size_t>(field_type);
+	if (field_type_index >= field_type_str.size())
+	{
+		return "NONE";
+	}
+
+	return field_type_str[field_type_index];
+}
+
+enum class skill_category_t : std::uint8_t
+{
+	other = 0U,
+	combat = 1U,
+	magic = 2U,
+	stealth = 3U,
+};
+
 struct avif_record final
 {
 	formid_t record_id;
 	std::string name;
 	std::string description;
+	skill_category_t category;
 };
 
 }
