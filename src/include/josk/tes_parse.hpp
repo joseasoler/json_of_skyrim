@@ -6,7 +6,8 @@
 #include <filesystem>
 #include <string>
 #include <string_view>
-#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 namespace josk::tes
 {
@@ -14,7 +15,9 @@ namespace josk::tes
 /** Parsed records gathered from all modlist plugins following load order rules. */
 struct parsed_records_t final
 {
-	std::unordered_map<formid_t, avif_record> avif_records;
+	/** Any records in this set will not be parsed again. */
+	std::unordered_set<formid_t> parsed_formids;
+	std::vector<avif_record> avif_records;
 };
 
 /** TES file parser implementation. Must be passed to the next file parsing task and not handled outside of them. */

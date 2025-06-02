@@ -75,7 +75,7 @@ using formid_t = std::uint32_t;
 
 struct avif_record final
 {
-	formid_t formid;
+	formid_t record_id;
 	std::string name;
 	std::string description;
 };
