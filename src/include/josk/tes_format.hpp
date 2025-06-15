@@ -5,11 +5,11 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace josk::tes
 {
 
-// Only the parts of the format visible outside the parser are exposed in this interface.
 // For an in-depth description of the format, check the UESP documentation at:
 // https://en.uesp.net/wiki/Skyrim_Mod:Mod_File_Format
 
@@ -77,15 +77,31 @@ using formid_t = std::uint32_t;
 enum class field_type_t : std::uint8_t
 {
 	anam,
+	avsk,
 	cnam,
+	ctda,
+	data,
 	desc,
 	edid,
+	fnam,
 	full,
+	hnam,
+	icon,
+	inam,
+	pnam,
+	snam,
+	vmad,
+	vnam,
+	xnam,
+	ynam,
 	none
 };
 
 /** String representations of field types, as they appear in TES files. Indexed by their field_type_t. */
-constexpr std::array<std::string_view, 5Z> field_type_str{"ANAM", "CNAM", "DESC", "EDID", "FULL"};
+constexpr std::array<std::string_view, 18Z> field_type_str{
+		"ANAM", "AVSK", "CNAM", "CTDA", "DATA", "DESC", "EDID", "FNAM", "FULL",
+		"HNAM", "ICON", "INAM", "PNAM", "SNAM", "VMAD", "VNAM", "XNAM", "YNAM",
+};
 
 /**
  * Returns the string representation of a field type.
@@ -111,12 +127,30 @@ enum class skill_category_t : std::uint8_t
 	stealth = 3U,
 };
 
+struct perk_record final
+{
+	formid_t record_id;
+	std::string name;
+	std::string description;
+	std::uint8_t skill_req;
+	std::vector<formid_t> prereq_perk_ids;
+	formid_t next_perk_id;
+};
+
+struct avif_perk final
+{
+	formid_t record_id;
+	float x_pos;
+	float y_pos;
+};
+
 struct avif_record final
 {
 	formid_t record_id;
 	std::string name;
 	std::string description;
 	skill_category_t category;
+	std::vector<avif_perk> perks;
 };
 
 }

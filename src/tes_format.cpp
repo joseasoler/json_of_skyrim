@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <iterator>
 #include <string_view>
 
@@ -167,9 +168,26 @@ static_assert(
 		std::ranges::all_of(field_type_str, [](const std::string_view view) { return view.size() == section_id_byte_size; })
 );
 
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::anam)] == "ANAM");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::avsk)] == "AVSK");
 static_assert(field_type_str[static_cast<std::size_t>(field_type_t::cnam)] == "CNAM");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::ctda)] == "CTDA");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::data)] == "DATA");
 static_assert(field_type_str[static_cast<std::size_t>(field_type_t::desc)] == "DESC");
 static_assert(field_type_str[static_cast<std::size_t>(field_type_t::edid)] == "EDID");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::fnam)] == "FNAM");
 static_assert(field_type_str[static_cast<std::size_t>(field_type_t::full)] == "FULL");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::hnam)] == "HNAM");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::icon)] == "ICON");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::inam)] == "INAM");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::pnam)] == "PNAM");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::snam)] == "SNAM");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::vmad)] == "VMAD");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::vnam)] == "VNAM");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::xnam)] == "XNAM");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::ynam)] == "YNAM");
+
+// Assumptions about the sizes of primitive types.
+static_assert(sizeof(float) == sizeof(std::uint32_t));
 
 }

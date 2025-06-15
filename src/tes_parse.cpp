@@ -23,8 +23,13 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include "strong_type/ordered.hpp"
+
+// Keep track of parser actions and show them all in error reports.
+#define JOSK_USE_PARSER_LOG
 
 namespace josk::tes
 {
@@ -38,6 +43,10 @@ struct parser
 	std::string_view name{"Invalid file name"};
 	/** A pointer is used to avoid passing non-const references around. Null indicates non-initialized or an error. */
 	parsed_records_t* records{};
+#if defined(JOSK_USE_PARSER_LOG)
+	/** Previous actions taken by the parser. Used in error reports. */
+	std::vector<std::string> log;
+#endif
 };
 
 }
@@ -140,16 +149,23 @@ public:
 	[[nodiscard]] std::string error_message(std::string_view description);
 
 	/**
+	 * Adds a log entry for the current state if JOSK_USE_PARSER_LOG is defined.
+	 * @param description Short description of the state. Must start with uppercase and not end with a period.
+	 */
+	void append_to_log(std::string_view description);
+
+	/**
+	 * Adds a record or field entry for the current state if JOSK_USE_PARSER_LOG is defined.
+	 * @param description Short description of the state. Must start with lowercase and not end with a period.
+	 * @param record_type Record type being processed.
+	 */
+	void append_record_to_log(std::string_view description, josk::tes::record_type_t record_type);
+
+	/**
 	 * Releases the internal parser state from RAII management. Intended to pass the state to the next task.
 	 * @return Pointer to the internal parser state.
 	 */
 	parser_state* release();
-
-	/**
-	 * Open the next record group. The parser must be at the beginning of the group.
-	 * @return invalid_group_data if no more groups remain, valid group data otherwise. An error string if applicable.
-	 */
-	[[nodiscard]] std::expected<group_data_t, std::string> next_group();
 
 	/**
 	 * Helper function for retrieving an integral value of any type from the TES4 plugin file. Caller is responsible for
@@ -166,6 +182,14 @@ public:
 		return value;
 	}
 
+	[[nodiscard]] float parse_float();
+
+	/**
+	 * Open the next record group. The parser must be at the beginning of the group.
+	 * @return invalid_group_data if no more groups remain, valid group data otherwise. An error string if applicable.
+	 */
+	[[nodiscard]] std::expected<group_data_t, std::string> next_group();
+
 	/**
 	 * Parse individual records in a group.
 	 * @param group_data Group data.
@@ -175,9 +199,10 @@ public:
 
 	std::expected<record_header_data, std::string> parse_record_header(record_type_t record_type);
 
-	std::expected<bool, std::string> parse_avif(josk::tes::formid_t record_id);
+	std::expected<bool, std::string> parse_perk(josk::tes::formid_t record_id, pos_t record_data_end);
+	std::expected<bool, std::string> parse_avif(josk::tes::formid_t record_id, pos_t record_data_end);
 	/** Besides returning errors, parse functions may return false if the record has to be ignored. */
-	using record_parse_func = std::expected<bool, std::string> (parser_impl::*)(josk::tes::formid_t);
+	using record_parse_func = std::expected<bool, std::string> (parser_impl::*)(josk::tes::formid_t, pos_t);
 	[[nodiscard]] static record_parse_func get_record_parse_func(record_type_t record_type) noexcept;
 
 	[[nodiscard]] section_str_id parse_section_id();
@@ -186,12 +211,6 @@ public:
 	[[nodiscard]] formid_t parse_formid();
 
 	[[nodiscard]] offset_t parse_field_size();
-
-	template <std::integral integral_type>
-	[[nodiscard]] integral_type parse_integral_field_value()
-	{
-		return parse_integral<integral_type>();
-	}
 
 	[[nodiscard]] std::string parse_string_field_value(offset_t size)
 	{
@@ -223,8 +242,9 @@ public:
 	/**
 	 * Skip the next field, depending on its type.
 	 * @param field_type Field type to ignore.
+	 * @return True if the field was present.
 	 */
-	void ignore_field_if_present(field_type_t field_type);
+	bool ignore_field_if_present(field_type_t field_type);
 };
 
 parser_impl::parser_impl(parser_state* state)
@@ -274,8 +294,44 @@ std::string parser_impl::error_message(const std::string_view description)
 			break;
 	}
 
-	constexpr auto* format_str = "Parse error in {}: {}. State: {}, position: 0x{:x}.";
-	return std::format(format_str, _state->name, description, stream_status, position);
+	constexpr std::string_view format{"Parse error in {}: {}. State: {}, position: 0x{:x}"};
+	auto message = std::format(format, _state->name, description, stream_status, position);
+#if defined(JOSK_USE_PARSER_LOG)
+	for (const auto& log_entry : _state->log)
+	{
+		message += log_entry;
+	}
+#endif
+
+	return message;
+}
+
+void parser_impl::append_to_log([[maybe_unused]] const std::string_view description)
+{
+#if defined(JOSK_USE_PARSER_LOG)
+	constexpr std::string_view format{"\n{} at 0x{:x}"};
+	_state->log.emplace_back(std::format(format, description, current_position()));
+#endif
+}
+
+void parser_impl::append_record_to_log(const std::string_view description, const josk::tes::record_type_t record_type)
+{
+#if defined(JOSK_USE_PARSER_LOG)
+	constexpr std::string_view format{"\n{} {} at 0x{:x}"};
+	_state->log.emplace_back(
+			std::format(
+					format, josk::tes::record_type_str[static_cast<std::size_t>(record_type)], description, current_position()
+			)
+	);
+#endif
+}
+
+[[nodiscard]] float parser_impl::parse_float()
+{
+	float value{};
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+	_state->input.read(reinterpret_cast<char*>(&value), sizeof(float));
+	return value;
 }
 
 std::expected<group_data_t, std::string> parser_impl::next_group()
@@ -318,6 +374,7 @@ std::expected<group_data_t, std::string> parser_impl::next_group()
 	const auto contained_record_type = parse_record_type();
 	// Return the stream to the start of the header of the first record.
 	seek_offset(-section_str_id_offset);
+
 	return group_data_t{
 			.contained_record_type = contained_record_type, .data_size = total_grup_size - grup_header_total_size
 	};
@@ -341,10 +398,14 @@ std::expected<void, std::string> parser_impl::parse_group(const group_data_t gro
 	{
 		// Group that does not require parsing.
 		seek_position(group_data_end);
+		append_record_to_log("group ignored", contained_record_type);
+		return {};
 	}
+	append_record_to_log("group data start", contained_record_type);
 
 	while (current_position() < group_data_end)
 	{
+		append_record_to_log("record header start", contained_record_type);
 		auto parse_header_result = parse_record_header(contained_record_type);
 		if (!parse_header_result.has_value())
 		{
@@ -355,19 +416,21 @@ std::expected<void, std::string> parser_impl::parse_group(const group_data_t gro
 
 		const auto record_data_end = current_position() + record_data_size;
 
-		if (auto& parsed_formids = _state->records->parsed_formids; !parsed_formids.contains(record_type))
+		if (auto& parsed_record_ids = _state->records->parsed_record_ids; !parsed_record_ids.contains(record_type))
 		{
-			const auto parse_record_data_result = std::invoke(parse_func, *this, record_type);
+			append_record_to_log("record data start", contained_record_type);
+			const auto parse_record_data_result = std::invoke(parse_func, *this, record_type, record_data_end);
 			if (!parse_record_data_result.has_value())
 			{
 				return std::unexpected(parse_record_data_result.error());
 			}
 			if (parse_record_data_result.value())
 			{
-				parsed_formids.emplace(record_type);
+				parsed_record_ids.emplace(record_type);
 			}
 		}
 		seek_position(record_data_end);
+		append_record_to_log("record data end", contained_record_type);
 	}
 
 	if (current_position() != group_data_end)
@@ -376,6 +439,7 @@ std::expected<void, std::string> parser_impl::parse_group(const group_data_t gro
 		return std::unexpected(error_message(formatted_error));
 	}
 
+	append_to_log("Group data end");
 	return {};
 }
 
@@ -403,28 +467,29 @@ std::expected<record_header_data, std::string> parser_impl::parse_record_header(
 	return header_data;
 }
 
-std::expected<bool, std::string> parser_impl::parse_avif(const josk::tes::formid_t record_id)
+std::expected<bool, std::string> parser_impl::parse_avif(
+		const josk::tes::formid_t record_id, const pos_t record_data_end
+)
 {
-	if (!validate_field_type(field_type_t::edid))
+	if (!ignore_field_if_present(field_type_t::edid))
 	{
 		return false;
 	}
-	seek_offset(parse_field_size());
 
 	if (!validate_field_type(field_type_t::full))
 	{
 		return false;
 	}
-	[[maybe_unused]] const auto name_size = parse_field_size();
-	[[maybe_unused]] const auto name_position = current_position();
+	const auto name_size = parse_field_size();
+	const auto name_position = current_position();
 	seek_offset(name_size);
 
 	if (!validate_field_type(field_type_t::desc))
 	{
 		return false;
 	}
-	[[maybe_unused]] const auto description_size = parse_field_size();
-	[[maybe_unused]] const auto description_position = current_position();
+	const auto description_size = parse_field_size();
+	const auto description_position = current_position();
 	seek_offset(description_size);
 
 	// Some AVIFs such as one-handed and two-handed have an ANAM field.
@@ -435,14 +500,64 @@ std::expected<bool, std::string> parser_impl::parse_avif(const josk::tes::formid
 		return false;
 	}
 	seek_offset(offset_sizeof<field_size_t>());
-	const auto cnam_value = parse_integral_field_value<std::uint32_t>();
+	const auto cnam_value = parse_integral<std::uint32_t>();
 	if (constexpr auto max_cnam_value = static_cast<std::uint32_t>(josk::tes::skill_category_t::stealth);
 			max_cnam_value < cnam_value)
 	{
 		return false;
 	}
 
-	// ToDo missing two handed and one handed
+	ignore_field_if_present(field_type_t::avsk);
+
+	std::vector<josk::tes::avif_perk> perks;
+	while (current_position() < record_data_end)
+	{
+		// Perks are parsed first. If any errors are found, the avif record will not be created.
+		josk::tes::avif_perk perk{};
+
+		if (!validate_field_type(field_type_t::pnam))
+		{
+			return false;
+		}
+		seek_offset(offset_sizeof<field_size_t>());
+		perk.record_id = parse_formid();
+
+		if (!ignore_field_if_present(field_type_t::fnam) || !ignore_field_if_present(field_type_t::xnam) ||
+				!ignore_field_if_present(field_type_t::ynam))
+		{
+			return false;
+		}
+
+		if (!validate_field_type(field_type_t::hnam))
+		{
+			return false;
+		}
+		seek_offset(offset_sizeof<field_size_t>());
+		perk.x_pos = parse_float();
+
+		if (!validate_field_type(field_type_t::vnam))
+		{
+			return false;
+		}
+		seek_offset(offset_sizeof<field_size_t>());
+		perk.y_pos = parse_float();
+
+		if (!ignore_field_if_present(field_type_t::snam))
+		{
+			return false;
+		}
+
+		while (ignore_field_if_present(field_type_t::cnam))
+		{
+		};
+
+		if (!ignore_field_if_present(field_type_t::inam))
+		{
+			return false;
+		}
+
+		perks.emplace_back(perk);
+	}
 
 	auto& avif_record = _state->records->avif_records.emplace_back();
 	avif_record.record_id = record_id;
@@ -451,6 +566,77 @@ std::expected<bool, std::string> parser_impl::parse_avif(const josk::tes::formid
 	avif_record.name = parse_string_field_value(name_size);
 	seek_position(description_position);
 	avif_record.description = parse_string_field_value(description_size);
+	avif_record.perks = std::move(perks);
+
+	return true;
+}
+
+std::expected<bool, std::string> parser_impl::parse_perk(
+		const josk::tes::formid_t record_id, const pos_t /*record_data_end*/
+)
+{
+	if (!ignore_field_if_present(field_type_t::edid))
+	{
+		return false;
+	}
+
+	ignore_field_if_present(field_type_t::vmad);
+
+	if (!validate_field_type(field_type_t::full))
+	{
+		return false;
+	}
+
+	const auto name_size = parse_field_size();
+	[[maybe_unused]] const auto name_position = current_position();
+	seek_offset(name_size);
+
+	if (!validate_field_type(field_type_t::desc))
+	{
+		return false;
+	}
+	const auto description_size = parse_field_size();
+	[[maybe_unused]] const auto description_position = current_position();
+	seek_offset(description_size);
+
+	ignore_field_if_present(field_type_t::icon);
+
+	// ToDo parse conditions
+	while (ignore_field_if_present(field_type_t::ctda))
+	{
+	}
+
+	if (!validate_field_type(field_type_t::data))
+	{
+		return false;
+	}
+	seek_offset(offset_sizeof<field_size_t>());
+
+	[[maybe_unused]] const auto is_trait = parse_integral<std::int8_t>();
+	[[maybe_unused]] const auto level = parse_integral<std::int8_t>();
+	[[maybe_unused]] const auto num_ranks = parse_integral<std::int8_t>();
+	if (const auto is_playable = parse_integral<bool>(); !is_playable)
+	{
+		return false;
+	}
+	if (const auto is_hidden = parse_integral<bool>(); is_hidden)
+	{
+		return false;
+	}
+
+	auto& perk_record = _state->records->perk_records.emplace_back();
+	perk_record.record_id = record_id;
+	seek_position(name_position);
+	perk_record.name = parse_string_field_value(name_size);
+	seek_position(description_position);
+	perk_record.description = parse_string_field_value(description_size);
+
+	/*
+	if (perk_record.name.contains("Alkahest"))
+	{
+		return std::unexpected(error_message("Alkahest"));
+	}
+	*/
 
 	return true;
 }
@@ -461,6 +647,8 @@ parser_impl::record_parse_func parser_impl::get_record_parse_func(const record_t
 	{
 		case record_type_t::avif:
 			return &parser_impl::parse_avif;
+		case record_type_t::perk:
+			return &parser_impl::parse_perk;
 		default:
 			break;
 	}
@@ -532,17 +720,16 @@ bool parser_impl::validate_field_type(const field_type_t field_type)
 	return std::ranges::equal(field_string, parsed_string);
 }
 
-void parser_impl::ignore_field_if_present(const field_type_t field_type)
+bool parser_impl::ignore_field_if_present(const field_type_t field_type)
 {
 	if (validate_field_type(field_type))
 	{
 		seek_offset(parse_field_size());
+		return true;
 	}
-	else
-	{
-		// Record not found. Restore the stream to its previous position.
-		seek_offset(-section_str_id_offset);
-	}
+	// Record not found. Restore the stream to its previous position.
+	seek_offset(-section_str_id_offset);
+	return false;
 }
 
 std::expected<parser_impl, std::string> acquire_state(josk::tes::parser* parser_ptr)
@@ -576,10 +763,14 @@ std::expected<parser_impl, std::string> open(
 		return std::unexpected(parser.error_message("could not open file"));
 	}
 
-	if (!parser.validate_record_type(parser_impl::record_type_t::tes4))
+	if (!parser.validate_record_type(josk::tes::record_type_t::tes4))
 	{
 		return std::unexpected(parser.error_message("invalid TES4 file"));
 	}
+#if defined(JOSK_USE_PARSER_LOG)
+	constexpr std::string_view tes4_opened_format{"of file {}"};
+	parser.append_record_to_log(std::format(tes4_opened_format, path.string()), josk::tes::record_type_t::tes4);
+#endif
 
 	const auto tes4_data_size = parser.parse_record_size();
 	// Remaining header size after parsing record type and data size.

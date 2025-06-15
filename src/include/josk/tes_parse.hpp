@@ -16,11 +16,12 @@ namespace josk::tes
 struct parsed_records_t final
 {
 	/** Any records in this set will not be parsed again. */
-	std::unordered_set<formid_t> parsed_formids;
+	std::unordered_set<formid_t> parsed_record_ids;
 	std::vector<avif_record> avif_records;
+	std::vector<perk_record> perk_records;
 };
 
-/** TES file parser implementation. Must be passed to the next file parsing task and not handled outside of them. */
+/** TES file parser implementation. Must be passed to the next file parsing task and not be handled outside of them. */
 struct parser;
 
 /**
