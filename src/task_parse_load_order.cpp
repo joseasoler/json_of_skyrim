@@ -2,6 +2,7 @@
 #include <josk/tasks.hpp>
 
 #include <expected>
+#include <filesystem>
 #include <format>
 #include <fstream>
 #include <ios>
@@ -13,11 +14,15 @@ namespace josk::task
 
 std::expected<plugins_to_load_t, std::string> parse_load_order(cli::arguments_t arguments)
 {
-	const auto& load_order_path = arguments.load_order_path;
+	const auto load_order_path = arguments.profile_path / "loadorder.txt";
+	if (!std::filesystem::is_regular_file(load_order_path))
+	{
+		return std::unexpected(std::format("Could not find load order file {}.", load_order_path.generic_string()));
+	}
 	std::ifstream input(load_order_path, std::ios::in);
 	if (!input.is_open() || !input.good())
 	{
-		return std::unexpected(std::format("Could not load order file {}.", load_order_path.generic_string()));
+		return std::unexpected(std::format("Could not open load order file {}.", load_order_path.generic_string()));
 	}
 
 	plugins_to_load_t plugins_to_load;
