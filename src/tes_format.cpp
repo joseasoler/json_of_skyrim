@@ -180,6 +180,7 @@ static_assert(field_type_str[static_cast<std::size_t>(field_type_t::full)] == "F
 static_assert(field_type_str[static_cast<std::size_t>(field_type_t::hnam)] == "HNAM");
 static_assert(field_type_str[static_cast<std::size_t>(field_type_t::icon)] == "ICON");
 static_assert(field_type_str[static_cast<std::size_t>(field_type_t::inam)] == "INAM");
+static_assert(field_type_str[static_cast<std::size_t>(field_type_t::nnam)] == "NNAM");
 static_assert(field_type_str[static_cast<std::size_t>(field_type_t::pnam)] == "PNAM");
 static_assert(field_type_str[static_cast<std::size_t>(field_type_t::snam)] == "SNAM");
 static_assert(field_type_str[static_cast<std::size_t>(field_type_t::vmad)] == "VMAD");

@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -72,6 +73,7 @@ constexpr std::size_t section_id_byte_size = 4Z;
 
 /** Form (or record) identifiers are unique identifiers for individual records. */
 using formid_t = std::uint32_t;
+constexpr auto invalid_formid = std::numeric_limits<formid_t>::max();
 
 /** Parsed field types are represented as a single byte. */
 enum class field_type_t : std::uint8_t
@@ -88,6 +90,7 @@ enum class field_type_t : std::uint8_t
 	hnam,
 	icon,
 	inam,
+	nnam,
 	pnam,
 	snam,
 	vmad,
@@ -98,9 +101,9 @@ enum class field_type_t : std::uint8_t
 };
 
 /** String representations of field types, as they appear in TES files. Indexed by their field_type_t. */
-constexpr std::array<std::string_view, 18Z> field_type_str{
-		"ANAM", "AVSK", "CNAM", "CTDA", "DATA", "DESC", "EDID", "FNAM", "FULL",
-		"HNAM", "ICON", "INAM", "PNAM", "SNAM", "VMAD", "VNAM", "XNAM", "YNAM",
+constexpr std::array<std::string_view, 19Z> field_type_str{
+		"ANAM", "AVSK", "CNAM", "CTDA", "DATA", "DESC", "EDID", "FNAM", "FULL", "HNAM",
+		"ICON", "INAM", "NNAM", "PNAM", "SNAM", "VMAD", "VNAM", "XNAM", "YNAM",
 };
 
 /**
@@ -129,24 +132,24 @@ enum class skill_category_t : std::uint8_t
 
 struct perk_record final
 {
-	formid_t record_id;
+	formid_t record_id{invalid_formid};
 	std::string name;
 	std::string description;
-	std::uint8_t skill_req;
+	std::uint8_t skill_req{};
 	std::vector<formid_t> prereq_perk_ids;
-	formid_t next_perk_id;
+	formid_t next_perk_id{invalid_formid};
 };
 
 struct avif_perk final
 {
-	formid_t record_id;
+	formid_t record_id{invalid_formid};
 	float x_pos;
 	float y_pos;
 };
 
 struct avif_record final
 {
-	formid_t record_id;
+	formid_t record_id{invalid_formid};
 	std::string name;
 	std::string description;
 	skill_category_t category;

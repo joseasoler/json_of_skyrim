@@ -624,19 +624,20 @@ std::expected<bool, std::string> parser_impl::parse_perk(
 		return false;
 	}
 
+	formid_t next_perk_id{josk::tes::invalid_formid};
+	if (validate_field_type(field_type_t::nnam))
+	{
+		seek_offset(parse_field_size());
+		next_perk_id = parse_formid();
+	}
+
 	auto& perk_record = _state->records->perk_records.emplace_back();
 	perk_record.record_id = record_id;
 	seek_position(name_position);
 	perk_record.name = parse_string_field_value(name_size);
 	seek_position(description_position);
 	perk_record.description = parse_string_field_value(description_size);
-
-	/*
-	if (perk_record.name.contains("Alkahest"))
-	{
-		return std::unexpected(error_message("Alkahest"));
-	}
-	*/
+	perk_record.next_perk_id = next_perk_id;
 
 	return true;
 }
